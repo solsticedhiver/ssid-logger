@@ -124,7 +124,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
 
   // BSSID
   const u_char *bssid_addr = packet + offset + 2 + 2 + 6 + 6; // FC + duration + DA + SA
-  u_char *bssid = (u_char *)malloc(18); // AP mac address
+  u_char bssid[18];
   sprintf(bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0], bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4], bssid_addr[5]);
   // Capability Info
   const u_char *ci_addr = bssid_addr + 6 + 2 + 8 + 2;
@@ -132,7 +132,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   memcpy(&ci_fields, ci_addr, sizeof(ci_fields));
   uint16_t ess = ci_fields & 0x0001;
   uint16_t privacy = (ci_fields & 0x0010) >> 4;
-  // SSID
+  // SSID aka IE with id 0
   const u_char *ssid_addr = bssid_addr + 6 + 2 + 8 + 2 + 2; // + BSSID + Seqctl + timestamp + B.I. + cap; IE.ID == 0
   const u_char *ssid_len = ssid_addr + 1;
   u_char *ssid = (u_char *)malloc(*ssid_len+1); // AP name
@@ -228,7 +228,6 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   if (rsn != NULL) free_cipher_suite(rsn);
   if (msw != NULL) free_cipher_suite(msw);
   free(ssid);
-  free(bssid);
 }
 
 void usage(void) {
