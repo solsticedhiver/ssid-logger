@@ -247,12 +247,12 @@ void usage(void) {
 }
 
 int main(int argc, char *argv[]) {
-  char *dev = NULL;
+  char *iface = NULL;
   int opt;
   while((opt = getopt(argc, argv, "i:")) != -1)  {
     switch(opt)  {
       case 'i':
-      dev = optarg;
+      iface = optarg;
       break;
       case '?':
       usage();
@@ -262,29 +262,29 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (dev == NULL) {
+  if (iface == NULL) {
     fprintf(stderr, "Error: no interface selected\n");
     exit(EXIT_FAILURE);
   }
-  //printf("The device you entered: %s\n", dev);
+  //printf("The device you entered: %s\n", iface);
 
   char errbuf[PCAP_ERRBUF_SIZE];
 
-  handle = pcap_open_live(dev, SNAP_LEN, 1, 1000, errbuf);
+  handle = pcap_open_live(iface, SNAP_LEN, 1, 1000, errbuf);
   if (handle == NULL) {
-    fprintf(stderr, "Error: couldn't open device %s: %s\n", dev, errbuf);
+    fprintf(stderr, "Error: couldn't open device %s: %s\n", iface, errbuf);
     exit(EXIT_FAILURE);
   }
 
   if (pcap_datalink(handle) != DLT_IEEE802_11_RADIO) {
-    fprintf(stderr, "Error: monitor mode is not enabled for %s\n", dev);
+    fprintf(stderr, "Error: monitor mode is not enabled for %s\n", iface);
     if (pcap_can_set_rfmon(handle) == 1) {
-      printf("Trying to set %s in monitor mode...\n", dev);
+      printf("Trying to set %s in monitor mode...\n", iface);
       if (pcap_set_rfmon(handle, 1) != 0) {
-        fprintf(stderr, "Error: unable to set %s in monitor mode\n", dev);
+        fprintf(stderr, "Error: unable to set %s in monitor mode\n", iface);
         exit(EXIT_FAILURE);
       } else {
-        printf("%s has been set in monitor mode\n", dev);
+        printf("%s has been set in monitor mode\n", iface);
       }
     } else {
       exit(EXIT_FAILURE);
