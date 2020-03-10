@@ -6,6 +6,12 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <pthread.h>
+#include <net/if.h>
+#include <netlink/netlink.h>
+#include <netlink/genl/genl.h>
+#include <netlink/genl/ctrl.h>
+#include <linux/nl80211.h>
 
 #include "radiotap_iter.h"
 
@@ -16,6 +22,11 @@
 
 static const u_char *CIPHER_SUITE_SELECTORS[] = {"Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP"};
 static const u_char EMPTY_SSID[] = "***";
+static const uint8_t CHANNELS[] = {1,4,7,10,13,2,5,8,11,3,6,9,12};
+
+uint8_t STOP_HOPPER = 0;
+#define HOP_PER_SECOND 5
+#define SLEEP_DURATION (1000/HOP_PER_SECOND)*100
 
 struct cipher_suite {
     u_char group_cipher_suite[4];
@@ -28,7 +39,60 @@ struct cipher_suite {
 pcap_t *handle; // global, to use it in sigint_handler
 
 void sigint_handler(int s) {
+  STOP_HOPPER = 1;
   pcap_breakloop(handle);
+}
+
+void *channel_hopper(void *arg) {
+  // based on https://stackoverflow.com/a/53602395/283067
+  u_char *device = (u_char *)arg;
+  uint8_t indx = 0;
+  uint32_t freq = 2412 + (CHANNELS[0]-1)*5;
+  size_t chan_number = sizeof(CHANNELS)/sizeof(uint8_t);
+  struct nl_msg *msg;
+
+  // Create the socket and connect to it
+  struct nl_sock *sckt = nl_socket_alloc();
+  genl_connect(sckt);
+  int ctrl = genl_ctrl_resolve(sckt, "nl80211");
+  enum nl80211_commands command = NL80211_CMD_SET_WIPHY;
+
+  while (1) {
+    if (STOP_HOPPER) {
+      return NULL;
+    }
+
+    // Allocate a new message
+    msg = nlmsg_alloc();
+
+    // create the message so it will send a command to the nl80211 interface
+    genlmsg_put(msg, 0, 0, ctrl, 0, 0, command, 0);
+
+    // add specific attributes to change the frequency of the device
+    NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, if_nametoindex(device));
+    NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, freq);
+
+    // finally send it and receive the amount of bytes sent
+    int ret = nl_send_auto(sckt, msg);
+    //printf("%d bytes sent\n", ret);
+
+    nlmsg_free(msg);
+
+    indx++;
+    if (indx == chan_number) {
+      indx = 0;
+    }
+    freq = 2412 + (CHANNELS[indx]-1)*5;
+
+    usleep(SLEEP_DURATION);
+    continue;
+
+nla_put_failure:
+    nlmsg_free(msg);
+    fprintf(stderr, "Error: couldn't send PUT command to interface\n");
+    fflush(stderr);
+    sleep(5);
+  }
 }
 
 void free_cipher_suite(struct cipher_suite *cs) {
@@ -305,12 +369,20 @@ int main(int argc, char *argv[]) {
   }
   pcap_freecode(&bfp);
 
+  pthread_t hopper;
+  if (pthread_create(&hopper, NULL, channel_hopper, iface)) {
+    fprintf(stderr, "Error creating hopper thread\n");
+    exit(EXIT_FAILURE);
+  }
+
   // catch CTRL+C to break loop cleanly
   signal(SIGINT, sigint_handler);
 
   pcap_loop(handle, -1, (pcap_handler)got_packet, NULL);
 
   pcap_close(handle);
+
+  pthread_join(hopper, NULL);
 
   return(0);
 }
