@@ -71,15 +71,15 @@ struct cipher_suite *parse_suite(u_char *start) {
   return cs;
 }
 
-void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
-  // parse radiotap header
+int8_t parse_radiotap_header(const u_char *packet, uint16_t *freq, int8_t *rssi) {
+  // parse radiotap header to get frequency and rssi; returns radiotap header size
   struct ieee80211_radiotap_header *rtaphdr;
   rtaphdr = (struct ieee80211_radiotap_header*)(packet);
+  int8_t offset = (int8_t)rtaphdr->it_len;
 
   struct ieee80211_radiotap_iterator iter;
-  int err;
-  uint16_t freq = 0, flags = 0;
-  int8_t rssi = 0, r;
+  uint16_t flags = 0;
+  int8_t r;
 
   static const struct radiotap_align_size align_size_000000_00[] = {
     [0] = { .align = 1, .size = 4, },
@@ -100,27 +100,38 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
     .n_ns = sizeof(vns_array)/sizeof(vns_array[0]),
   };
 
-  err = ieee80211_radiotap_iterator_init(&iter, rtaphdr, rtaphdr->it_len, &vns);
+  int err = ieee80211_radiotap_iterator_init(&iter, rtaphdr, rtaphdr->it_len, &vns);
   if (err) {
     printf("Error: malformed radiotap header (init returned %d)\n", err);
-    return;
+    return -1;
   }
 
+  *freq = 0;
+  *rssi = 0;
+  // iterate through radiotap filed and look for frequency and rssi
   while (!(err = ieee80211_radiotap_iterator_next(&iter))) {
     if (iter.this_arg_index == IEEE80211_RADIOTAP_CHANNEL) {
       assert(iter.this_arg_size == 4); // XXX: why ?
-      freq = iter.this_arg[0] + (iter.this_arg[1] << 8);
-      flags = iter.this_arg[2] + (iter.this_arg[3] << 8);
+      *freq = iter.this_arg[0] + (iter.this_arg[1] << 8);
+      //flags = iter.this_arg[2] + (iter.this_arg[3] << 8);
     }
     if (iter.this_arg_index == IEEE80211_RADIOTAP_DBM_ANTSIGNAL) {
       r = (int8_t)*iter.this_arg;
-      if (r != 0) rssi = r; // XXX: why do we get multiple dBm_antSignal with 0 value after the first one ?
+      if (r != 0) *rssi = r; // XXX: why do we get multiple dBm_antSignal with 0 value after the first one ?
     }
-    if (freq != 0 && rssi != 0) break;
+    if (*freq != 0 && *rssi != 0) break;
   }
+  return offset;
+}
 
-  // skip radiotap header to parse beacon frame
-  uint8_t offset = rtaphdr->it_len;
+void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
+  uint16_t freq;
+  int8_t rssi;
+  // parse radiotap header
+  int8_t offset = parse_radiotap_header(packet, &freq, &rssi);
+  if (offset < 0) {
+    return;
+  }
 
   // BSSID
   const u_char *bssid_addr = packet + offset + 2 + 2 + 6 + 6; // FC + duration + DA + SA
