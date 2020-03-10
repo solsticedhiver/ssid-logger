@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
-#include <byteswap.h>
 #include <assert.h>
 
 #include "radiotap_iter.h"
@@ -17,29 +16,6 @@ pcap_t *handle; // global, to use it in sigint_handler
 
 void sigint_handler(int s) {
   pcap_breakloop(handle);
-}
-
-void print_hex(const u_char *s, int len) {
-  int indx = 0;
-  while (indx < len) {
-    printf("\\x%02x", (unsigned int) *(s+indx));
-    indx++;
-  }
-  printf("\n");
-}
-
-void print_bin(void const * const ptr, size_t const size) {
-  unsigned char *b = (unsigned char*) ptr;
-  unsigned char byte;
-  int i, j;
-
-  for (i=size-1;i>=0;i--) {
-    for (j=7;j>=0;j--) {
-      byte = (b[i] >> j) & 1;
-      printf("%u", byte);
-    }
-  }
-  puts("");
 }
 
 void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
