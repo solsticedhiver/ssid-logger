@@ -10,7 +10,19 @@
 #include "radiotap_iter.h"
 
 #define SNAP_LEN 512
-#define CSS_OUI "\000\017\254" // 0x000x0F0xAC
+#define CSS_OUI "\000\017\254" // 0x000x0F0xAC or 00-0F-AC
+#define MS_OUI "\000\120\362" // 0x000x500xF2 or 00-50-F2
+#define WPS_ID "\000\120\362\004" // 0x000x500xF20x04 or 00-50-F2-04
+
+const static u_char *CIPHER_SUITE_SELECTORS[] = {"Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP"};
+
+struct cipher_suite {
+    u_char group_cipher_suite[4];
+    uint16_t pairwise_cipher_count;
+    u_char **pairwise_cipher_suite;
+    uint16_t akm_cipher_count;
+    u_char **akm_cipher_suite;
+};
 
 pcap_t *handle; // global, to use it in sigint_handler
 
@@ -18,8 +30,47 @@ void sigint_handler(int s) {
   pcap_breakloop(handle);
 }
 
-void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
+void free_cipher_suite(struct cipher_suite *cs) {
+  if (cs == NULL) return;
 
+  uint16_t pcsc = cs->pairwise_cipher_count;
+  for (int i=0; i< pcsc; i++) {
+    free(cs->pairwise_cipher_suite[i]);
+  }
+  free(cs->pairwise_cipher_suite);
+
+  uint16_t akmsc = cs->akm_cipher_count;
+  for (int i=0; i< akmsc; i++) {
+    free(cs->akm_cipher_suite[i]);
+  }
+  free(cs->akm_cipher_suite);
+
+  free(cs);
+  cs = NULL;
+}
+
+struct cipher_suite *parse_suite(u_char *start) {
+  struct cipher_suite *cs = malloc(sizeof(struct cipher_suite));
+
+  memcpy(cs->group_cipher_suite, start, 4);
+
+  uint16_t pcsc = cs->pairwise_cipher_count = *(start + 4);
+  cs->pairwise_cipher_suite = malloc(pcsc);
+  for (int i=0; i< pcsc; i++) {
+    cs->pairwise_cipher_suite[i] = malloc(4);
+    memcpy(cs->pairwise_cipher_suite[i], start + 4 + 2 + i*4, 4);
+  }
+
+  uint16_t akmsc = cs->akm_cipher_count = *(start + 4 + 2 + pcsc*4);
+  cs->akm_cipher_suite = malloc(akmsc);
+  for (int i=0; i< akmsc; i++) {
+    cs->akm_cipher_suite[i] = malloc(4);
+    memcpy(cs->akm_cipher_suite[i], start + 4 + 2 + pcsc*4 + 2 + i*4, 4);
+  }
+  return cs;
+}
+
+void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
   // parse radiotap header
   struct ieee80211_radiotap_header *rtaphdr;
   rtaphdr = (struct ieee80211_radiotap_header*)(packet);
@@ -86,55 +137,86 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   u_char *ssid = (u_char *)malloc(*ssid_len+1); // AP name
   snprintf(ssid, *ssid_len+1, "%s", ssid_addr+2);
 
-  // iterate over Information Element to parse RSN values
-  u_char *eid = (u_char *)ssid_addr + (*ssid_len + 2);
+  // iterate over Information Element to look for RSN crypto or MicrosoftWPA
+  u_char *ie = (u_char *)ssid_addr + (*ssid_len + 2);
+  uint8_t ie_len = *(ie + 1);
   uint8_t channel = 0;
-  int clen = eid - packet;
-  while (*eid != 48 && clen < header->len) {
-    if (*eid == 3) { // IE with id 3 is DS parameter set ~= channel
-      channel = *(eid+2);
+
+  struct cipher_suite *rsn = NULL;
+  struct cipher_suite *msw = NULL;
+  uint8_t wps = 0;
+  while (ie < packet + header->len) {
+    if ((ie + ie_len + 2 < packet + header->len)) { // just double check that this is an IE with length inside packet
+      if (*ie == 3) { // IE with id 3 is DS parameter set ~= channel
+        channel = *(ie + 2);
+      }
+      if (*ie == 48) {
+        // parse RSN IE
+        u_char *start = ie + 4;
+        rsn = parse_suite(start);
+      }
+      if (*ie == 221) {
+        if (memcmp(ie + 2, MS_OUI "\001\001", 5) == 0) {
+          // parse MicrosoftWPA IE
+          u_char *start = ie + 8;
+          msw = parse_suite(start);
+        } else if (memcmp (ie +2, WPS_ID, 4) == 0) {
+          wps = 1;
+        }
+      }
     }
-    u_char *len = eid + 1;
-    eid = eid + (*len + 2);
-    clen += *len + 2;
+    ie = ie + ie_len + 2;
+    ie_len = *(ie + 1);
   }
+
+  // print what we found
   printf("%s (%s)\n    CH%3d %4dMHz %ddBm ", ssid, bssid, channel, freq, rssi);
-
-  if ((*eid == 48) && (*(eid+1)+eid < packet+header->len)) { // IE with id 48 is RSNElt
-    uint16_t version = *(eid + 2);
-    u_char *gcs = eid + 1 + 3;
-    u_char gcs_oui[3];
-    memcpy(gcs_oui, gcs, 3);
-    assert((memcmp(gcs_oui, CSS_OUI, 3) == 0));
-    u_char gcs_type;
-    memcpy(&gcs_type, gcs+3, 1);
-
-    uint16_t pcsc = *(eid + 1 + 7);
-    u_char **pcs_list = malloc(pcsc);
-    for (int i=0; i< pcsc; i++) {
-      pcs_list[i] = malloc(4);
-      memcpy(pcs_list[i], eid + 1 + 7 + 2 + i*4, 4);
-    }
-    uint16_t akmsc = *(eid + 1 + 7 + 2 + pcsc*4);
-    u_char **akms_list = malloc(akmsc);
-    for (int i=0; i< akmsc; i++) {
-      akms_list[i] = malloc(4);
-      memcpy(akms_list[i], eid + 1 + 7 + 2 + pcsc*4 + 2 + i*4, 4);
-    }
-    printf("[WPA2-");
-    if (memcmp(akms_list[0], CSS_OUI"\001", 4) == 0) {
+  if (msw != NULL) {
+    printf("[WPA-");
+    if (msw->akm_cipher_suite[0][3] == 1) {
       printf("EAP-");
-    } else if (memcmp(akms_list[0], CSS_OUI"\002", 4) == 0) {
+    } else if (msw->akm_cipher_suite[0][3] == 2) {
       printf("PSK-");
     }
-    for (int i=0; i< pcsc; i++) {
-      if (memcmp(pcs_list[i], CSS_OUI"\002", 4) == 0) {
+    for (int i=0; i< msw->pairwise_cipher_count; i++) {
+      if (msw->pairwise_cipher_suite[i][3] == 2) {
         printf("+TKIP");
-      } else if (memcmp(pcs_list[i], CSS_OUI"\004", 4) == 0) {
+      } else if (msw->pairwise_cipher_suite[i][3] == 4) {
         printf("CCMP");
+      } else if (msw->pairwise_cipher_suite[i][3] == 1) {
+        printf("+WEP-40");
+      } else if (msw->pairwise_cipher_suite[i][3] == 5) {
+        printf("+WEP-104");
       }
     }
     printf("]");
+  }
+  if (rsn != NULL) {
+    printf("[WPA2-");
+    u_char last_byte = rsn->akm_cipher_suite[0][3];
+    switch(last_byte) {
+      case 1:
+      printf("EAP-");
+      break;
+      case 2:
+      printf("PSK-");
+      break;
+    }
+    for (int i=0; i< rsn->pairwise_cipher_count; i++) {
+      u_char last_byte = rsn->pairwise_cipher_suite[i][3];
+      switch(last_byte) {
+        case 2:
+        printf("+TKIP");
+        break;
+        case 4:
+        printf("CCMP");
+        break;
+      }
+    }
+    printf("]");
+  }
+  if (wps) {
+    printf("[WPS]");
   }
   if (ess) {
     printf("[ESS]");
@@ -142,6 +224,8 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   printf("\n");
   fflush(stdout);
 
+  if (rsn != NULL) free_cipher_suite(rsn);
+  if (msw != NULL) free_cipher_suite(msw);
   free(ssid);
   free(bssid);
 }
