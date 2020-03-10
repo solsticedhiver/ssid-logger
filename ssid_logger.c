@@ -225,6 +225,9 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
     }
     printf("]");
   }
+  if (!rsn && !msw && privacy) {
+    printf("[WEP]");
+  }
   if (wps) {
     printf("[WPS]");
   }
