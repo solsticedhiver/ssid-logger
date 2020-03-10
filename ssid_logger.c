@@ -14,7 +14,8 @@
 #define MS_OUI "\000\120\362" // 0x000x500xF2 or 00-50-F2
 #define WPS_ID "\000\120\362\004" // 0x000x500xF20x04 or 00-50-F2-04
 
-const static u_char *CIPHER_SUITE_SELECTORS[] = {"Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP"};
+static const u_char *CIPHER_SUITE_SELECTORS[] = {"Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP"};
+static const u_char EMPTY_SSID[] = "***";
 
 struct cipher_suite {
     u_char group_cipher_suite[4];
@@ -170,7 +171,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   }
 
   // print what we found
-  printf("%s (%s)\n    CH%3d %4dMHz %ddBm ", ssid, bssid, channel, freq, rssi);
+  printf("%s (%s)\n    CH%3d %4dMHz %ddBm ", ssid_len != 0 ? ssid : EMPTY_SSID, bssid, channel, freq, rssi);
   if (msw != NULL) {
     printf("[WPA-");
     if (msw->akm_cipher_suite[0][3] == 1) {
