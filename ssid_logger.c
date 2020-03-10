@@ -50,7 +50,7 @@ void free_cipher_suite(struct cipher_suite *cs) {
   cs = NULL;
 }
 
-struct cipher_suite *parse_suite(u_char *start) {
+struct cipher_suite *parse_cipher_suite(u_char *start) {
   struct cipher_suite *cs = malloc(sizeof(struct cipher_suite));
 
   memcpy(cs->group_cipher_suite, start, 4);
@@ -143,38 +143,36 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   memcpy(&ci_fields, ci_addr, sizeof(ci_fields));
   uint16_t ess = ci_fields & 0x0001;
   uint16_t privacy = (ci_fields & 0x0010) >> 4;
-  // SSID aka IE with id 0
-  const u_char *ssid_addr = bssid_addr + 6 + 2 + 8 + 2 + 2; // + BSSID + Seqctl + timestamp + B.I. + cap; IE.ID == 0
-  const u_char *ssid_len = ssid_addr + 1;
-  u_char *ssid = (u_char *)malloc(*ssid_len+1); // AP name
-  snprintf(ssid, *ssid_len+1, "%s", ssid_addr+2);
 
-  // iterate over Information Element to look for RSN crypto or MicrosoftWPA
-  u_char *ie = (u_char *)ssid_addr + (*ssid_len + 2);
+  u_char *ssid = NULL;
+  u_char *ie = (u_char *)ci_addr + 2;
   uint8_t ie_len = *(ie + 1);
-  uint8_t channel = 0;
+  uint8_t channel = 0, wps = 0, ssid_len = 0;
 
   struct cipher_suite *rsn = NULL;
   struct cipher_suite *msw = NULL;
-  uint8_t wps = 0;
+  // iterate over Information Element to look for SSID and RSN crypto and MicrosoftWPA
   while (ie < packet + header->len) {
     if ((ie + ie_len + 2 < packet + header->len)) { // just double check that this is an IE with length inside packet
-      if (*ie == 3) { // IE with id 3 is DS parameter set ~= channel
-        channel = *(ie + 2);
-      }
-      if (*ie == 48) {
-        // parse RSN IE
-        u_char *start = ie + 4;
-        rsn = parse_suite(start);
-      }
-      if (*ie == 221) {
-        if (memcmp(ie + 2, MS_OUI "\001\001", 5) == 0) {
-          // parse MicrosoftWPA IE
-          u_char *start = ie + 8;
-          msw = parse_suite(start);
-        } else if (memcmp (ie +2, WPS_ID, 4) == 0) {
-          wps = 1;
-        }
+      switch(*ie) {
+        case 0: // SSID aka IE with id 0
+          ssid_len = *(ie + 1);
+          ssid = (u_char *)malloc(ssid_len + 1); // AP name
+          snprintf(ssid, ssid_len+1, "%s", ie + 2);
+        case 3: // IE with id 3 is DS parameter set ~= channel
+          channel = *(ie + 2);
+          break;
+        case 48: // parse RSN IE
+          rsn = parse_cipher_suite(ie + 4);
+          break;
+        case 221:
+          if (memcmp(ie + 2, MS_OUI "\001\001", 5) == 0) {
+            // parse MicrosoftWPA IE
+            msw = parse_cipher_suite(ie + 8);
+          } else if (memcmp (ie +2, WPS_ID, 4) == 0) {
+            wps = 1;
+          }
+          break;
       }
     }
     ie = ie + ie_len + 2;
