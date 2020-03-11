@@ -52,6 +52,9 @@ struct ap_info {
 
 pcap_t *handle; // global, to use it in sigint_handler
 
+u_char *already_seen_bssid[64];
+uint8_t max_seen_bssid = 0;
+
 void sigint_handler(int s) {
   // signal hopper thread to stop
   STOP_HOPPER = true;
@@ -329,8 +332,23 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
     ie_len = *(ie + 1);
   }
 
+  // has that bssid already been seen ?
+  bool seen = false;
+  for (int i=0; i< max_seen_bssid; i++) {
+    if (memcmp(already_seen_bssid[i], bssid, 18) == 0) {
+      seen = true;
+      break;
+    }
+  }
   // print what we found
-  print_ssid_info(ssid, ssid_len, bssid, channel, freq, rssi, rsn, msw, ess, privacy, wps);
+  if (!seen) {
+    print_ssid_info(ssid, ssid_len, bssid, channel, freq, rssi, rsn, msw, ess, privacy, wps);
+    
+    u_char *new_seen = malloc(18);
+    strncpy(new_seen, bssid, 18);
+    already_seen_bssid[max_seen_bssid] = new_seen;
+    max_seen_bssid++;
+  }
 
   if (rsn != NULL) free_cipher_suite(rsn);
   if (msw != NULL) free_cipher_suite(msw);
