@@ -93,6 +93,8 @@ nla_put_failure:
     fflush(stderr);
     sleep(5);
   }
+
+  return NULL;
 }
 
 void free_cipher_suite(struct cipher_suite *cs) {
@@ -112,6 +114,8 @@ void free_cipher_suite(struct cipher_suite *cs) {
 
   free(cs);
   cs = NULL;
+
+  return;
 }
 
 struct cipher_suite *parse_cipher_suite(u_char *start) {
@@ -136,7 +140,8 @@ struct cipher_suite *parse_cipher_suite(u_char *start) {
 }
 
 int8_t parse_radiotap_header(const u_char *packet, uint16_t *freq, int8_t *rssi) {
-  // parse radiotap header to get frequency and rssi; returns radiotap header size
+  // parse radiotap header to get frequency and rssi
+  // returns radiotap header size or -1 if error
   struct ieee80211_radiotap_header *rtaphdr;
   rtaphdr = (struct ieee80211_radiotap_header*)(packet);
   int8_t offset = (int8_t)rtaphdr->it_len;
@@ -188,62 +193,10 @@ int8_t parse_radiotap_header(const u_char *packet, uint16_t *freq, int8_t *rssi)
   return offset;
 }
 
-void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
-  uint16_t freq;
-  int8_t rssi;
-  // parse radiotap header
-  int8_t offset = parse_radiotap_header(packet, &freq, &rssi);
-  if (offset < 0) {
-    return;
-  }
+void print_ssid_info(u_char *ssid, uint8_t ssid_len, u_char bssid[18], uint8_t channel,
+  uint16_t freq, int8_t rssi, struct cipher_suite *rsn, struct cipher_suite *msw,
+  uint8_t wps, uint16_t ess, uint16_t privacy) {
 
-  // BSSID
-  const u_char *bssid_addr = packet + offset + 2 + 2 + 6 + 6; // FC + duration + DA + SA
-  u_char bssid[18];
-  sprintf(bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0], bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4], bssid_addr[5]);
-  // Capability Info
-  const u_char *ci_addr = bssid_addr + 6 + 2 + 8 + 2;
-  uint16_t ci_fields;
-  memcpy(&ci_fields, ci_addr, sizeof(ci_fields));
-  uint16_t ess = ci_fields & 0x0001;
-  uint16_t privacy = (ci_fields & 0x0010) >> 4;
-
-  u_char *ssid = NULL;
-  u_char *ie = (u_char *)ci_addr + 2;
-  uint8_t ie_len = *(ie + 1);
-  uint8_t channel = 0, wps = 0, ssid_len = 0;
-
-  struct cipher_suite *rsn = NULL;
-  struct cipher_suite *msw = NULL;
-  // iterate over Information Element to look for SSID and RSN crypto and MicrosoftWPA
-  while (ie < packet + header->len) {
-    if ((ie + ie_len + 2 < packet + header->len)) { // just double check that this is an IE with length inside packet
-      switch(*ie) {
-        case 0: // SSID aka IE with id 0
-          ssid_len = *(ie + 1);
-          ssid = (u_char *)malloc(ssid_len + 1); // AP name
-          snprintf(ssid, ssid_len+1, "%s", ie + 2);
-        case 3: // IE with id 3 is DS parameter set ~= channel
-          channel = *(ie + 2);
-          break;
-        case 48: // parse RSN IE
-          rsn = parse_cipher_suite(ie + 4);
-          break;
-        case 221:
-          if (memcmp(ie + 2, MS_OUI "\001\001", 5) == 0) {
-            // parse MicrosoftWPA IE
-            msw = parse_cipher_suite(ie + 8);
-          } else if (memcmp (ie +2, WPS_ID, 4) == 0) {
-            wps = 1;
-          }
-          break;
-      }
-    }
-    ie = ie + ie_len + 2;
-    ie_len = *(ie + 1);
-  }
-
-  // print what we found
   printf("%s (%s)\n    CH%3d %4dMHz %ddBm ", ssid_len != 0 ? ssid : EMPTY_SSID, bssid, channel, freq, rssi);
   if (msw != NULL) {
     printf("[WPA-");
@@ -300,6 +253,66 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   }
   printf("\n");
   fflush(stdout);
+}
+
+void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
+  uint16_t freq;
+  int8_t rssi;
+  // parse radiotap header
+  int8_t offset = parse_radiotap_header(packet, &freq, &rssi);
+  if (offset < 0) {
+    return;
+  }
+
+  // parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
+  // BSSID
+  const u_char *bssid_addr = packet + offset + 2 + 2 + 6 + 6; // FC + duration + DA + SA
+  u_char bssid[18];
+  sprintf(bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0], bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4], bssid_addr[5]);
+  // Capability Info
+  const u_char *ci_addr = bssid_addr + 6 + 2 + 8 + 2;
+  uint16_t ci_fields;
+  memcpy(&ci_fields, ci_addr, sizeof(ci_fields));
+  uint16_t ess = ci_fields & 0x0001;
+  uint16_t privacy = (ci_fields & 0x0010) >> 4;
+
+  u_char *ssid = NULL;
+  u_char *ie = (u_char *)ci_addr + 2;
+  uint8_t ie_len = *(ie + 1);
+  uint8_t channel = 0, wps = 0, ssid_len = 0;
+
+  struct cipher_suite *rsn = NULL;
+  struct cipher_suite *msw = NULL;
+  // iterate over Information Element to look for SSID and RSN crypto and MicrosoftWPA
+  while (ie < packet + header->len) {
+    if ((ie + ie_len + 2 < packet + header->len)) { // just double check that this is an IE with length inside packet
+      switch(*ie) {
+        case 0: // SSID aka IE with id 0
+          ssid_len = *(ie + 1);
+          ssid = (u_char *)malloc(ssid_len + 1); // AP name
+          snprintf(ssid, ssid_len+1, "%s", ie + 2);
+        case 3: // IE with id 3 is DS parameter set ~= channel
+          channel = *(ie + 2);
+          break;
+        case 48: // parse RSN IE
+          rsn = parse_cipher_suite(ie + 4);
+          break;
+        case 221:
+          if (memcmp(ie + 2, MS_OUI "\001\001", 5) == 0) {
+            // parse MicrosoftWPA IE
+            msw = parse_cipher_suite(ie + 8);
+          } else if (memcmp (ie +2, WPS_ID, 4) == 0) {
+            wps = 1;
+          }
+          break;
+      }
+    }
+    ie = ie + ie_len + 2;
+    ie_len = *(ie + 1);
+  }
+
+  // print what we found
+  print_ssid_info(ssid, ssid_len, bssid, channel, freq, rssi, rsn, msw, wps, ess, privacy);
 
   if (rsn != NULL) free_cipher_suite(rsn);
   if (msw != NULL) free_cipher_suite(msw);
