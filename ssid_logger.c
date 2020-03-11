@@ -6,6 +6,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <net/if.h>
 #include <netlink/netlink.h>
@@ -26,7 +27,7 @@ static const uint8_t CHANNELS[] = {1,4,7,10,13,2,5,8,11,3,6,9,12};
 
 #define HOP_PER_SECOND 5
 #define SLEEP_DURATION (1000/HOP_PER_SECOND)*100
-uint8_t STOP_HOPPER = 0;
+bool STOP_HOPPER = false;
 
 struct cipher_suite {
     u_char group_cipher_suite[4];
@@ -36,11 +37,24 @@ struct cipher_suite {
     u_char **akm_cipher_suite;
 };
 
+struct ap_info {
+  u_char *ssid;
+  uint8_t ssid_len;
+  u_char bssid[18];
+  uint16_t channel;
+  uint16_t freq;
+  struct cipher_suite rsn;
+  struct cipher_suite msw;
+  bool ess;
+  bool privacy;
+  bool wps;
+};
+
 pcap_t *handle; // global, to use it in sigint_handler
 
 void sigint_handler(int s) {
   // signal hopper thread to stop
-  STOP_HOPPER = 1;
+  STOP_HOPPER = true;
   // stop pcap capture loop
   pcap_breakloop(handle);
 }
@@ -197,7 +211,7 @@ int8_t parse_radiotap_header(const u_char *packet, uint16_t *freq, int8_t *rssi)
 
 void print_ssid_info(u_char *ssid, uint8_t ssid_len, u_char bssid[18], uint8_t channel,
   uint16_t freq, int8_t rssi, struct cipher_suite *rsn, struct cipher_suite *msw,
-  uint8_t wps, uint16_t ess, uint16_t privacy) {
+  bool ess, bool privacy, bool wps) {
 
   printf("%s (%s)\n    CH%3d %4dMHz %ddBm ", ssid_len != 0 ? ssid : EMPTY_SSID, bssid, channel, freq, rssi);
   if (msw != NULL) {
@@ -276,13 +290,14 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   const u_char *ci_addr = bssid_addr + 6 + 2 + 8 + 2;
   uint16_t ci_fields;
   memcpy(&ci_fields, ci_addr, sizeof(ci_fields));
-  uint16_t ess = ci_fields & 0x0001;
-  uint16_t privacy = (ci_fields & 0x0010) >> 4;
+  bool ess = (bool)(ci_fields & 0x0001);
+  bool privacy = (bool)((ci_fields & 0x0010) >> 4);
 
   u_char *ssid = NULL;
   u_char *ie = (u_char *)ci_addr + 2;
   uint8_t ie_len = *(ie + 1);
-  uint8_t channel = 0, wps = 0, ssid_len = 0;
+  uint8_t channel = 0, ssid_len = 0;
+  bool wps = false;
 
   struct cipher_suite *rsn = NULL;
   struct cipher_suite *msw = NULL;
@@ -305,7 +320,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             // parse MicrosoftWPA IE
             msw = parse_cipher_suite(ie + 8);
           } else if (memcmp (ie +2, WPS_ID, 4) == 0) {
-            wps = 1;
+            wps = true;
           }
           break;
       }
@@ -315,7 +330,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   }
 
   // print what we found
-  print_ssid_info(ssid, ssid_len, bssid, channel, freq, rssi, rsn, msw, wps, ess, privacy);
+  print_ssid_info(ssid, ssid_len, bssid, channel, freq, rssi, rsn, msw, ess, privacy, wps);
 
   if (rsn != NULL) free_cipher_suite(rsn);
   if (msw != NULL) free_cipher_suite(msw);
