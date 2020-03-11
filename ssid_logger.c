@@ -24,9 +24,9 @@ static const u_char *CIPHER_SUITE_SELECTORS[] = {"Use group cipher suite", "WEP-
 static const u_char EMPTY_SSID[] = "***";
 static const uint8_t CHANNELS[] = {1,4,7,10,13,2,5,8,11,3,6,9,12};
 
-uint8_t STOP_HOPPER = 0;
 #define HOP_PER_SECOND 5
 #define SLEEP_DURATION (1000/HOP_PER_SECOND)*100
+uint8_t STOP_HOPPER = 0;
 
 struct cipher_suite {
     u_char group_cipher_suite[4];
@@ -39,7 +39,9 @@ struct cipher_suite {
 pcap_t *handle; // global, to use it in sigint_handler
 
 void sigint_handler(int s) {
+  // signal hopper thread to stop
   STOP_HOPPER = 1;
+  // stop pcap capture loop
   pcap_breakloop(handle);
 }
 
@@ -82,7 +84,7 @@ void *channel_hopper(void *arg) {
     if (indx == chan_number) {
       indx = 0;
     }
-    freq = 2412 + (CHANNELS[indx]-1)*5;
+    freq = 2412 + (CHANNELS[indx]-1)*5; // 2.4GHz band only for now
 
     usleep(SLEEP_DURATION);
     continue;
@@ -141,7 +143,7 @@ struct cipher_suite *parse_cipher_suite(u_char *start) {
 
 int8_t parse_radiotap_header(const u_char *packet, uint16_t *freq, int8_t *rssi) {
   // parse radiotap header to get frequency and rssi
-  // returns radiotap header size or -1 if error
+  // returns radiotap header size or -1 on error
   struct ieee80211_radiotap_header *rtaphdr;
   rtaphdr = (struct ieee80211_radiotap_header*)(packet);
   int8_t offset = (int8_t)rtaphdr->it_len;
@@ -223,21 +225,21 @@ void print_ssid_info(u_char *ssid, uint8_t ssid_len, u_char bssid[18], uint8_t c
     u_char last_byte = rsn->akm_cipher_suite[0][3];
     switch(last_byte) {
       case 1:
-      printf("EAP-");
-      break;
+        printf("EAP-");
+        break;
       case 2:
-      printf("PSK-");
-      break;
+        printf("PSK-");
+        break;
     }
     for (int i=0; i< rsn->pairwise_cipher_count; i++) {
       u_char last_byte = rsn->pairwise_cipher_suite[i][3];
       switch(last_byte) {
         case 2:
-        printf("+TKIP");
-        break;
+          printf("+TKIP");
+          break;
         case 4:
-        printf("CCMP");
-        break;
+          printf("CCMP");
+          break;
       }
     }
     printf("]");
@@ -269,6 +271,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   const u_char *bssid_addr = packet + offset + 2 + 2 + 6 + 6; // FC + duration + DA + SA
   u_char bssid[18];
   sprintf(bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0], bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4], bssid_addr[5]);
+
   // Capability Info
   const u_char *ci_addr = bssid_addr + 6 + 2 + 8 + 2;
   uint16_t ci_fields;
@@ -329,13 +332,14 @@ int main(int argc, char *argv[]) {
   while((opt = getopt(argc, argv, "i:")) != -1)  {
     switch(opt)  {
       case 'i':
-      iface = optarg;
-      break;
+        iface = optarg;
+        break;
       case '?':
-      usage();
-      return 1;
+        usage();
+        exit(EXIT_FAILURE);
       default:
-      usage();
+        usage();
+        exit(EXIT_FAILURE);
     }
   }
 
@@ -383,8 +387,9 @@ int main(int argc, char *argv[]) {
   pcap_freecode(&bfp);
 
   pthread_t hopper;
+  // start the channel hopper thread
   if (pthread_create(&hopper, NULL, channel_hopper, iface)) {
-    fprintf(stderr, "Error creating hopper thread\n");
+    fprintf(stderr, "Error creating channel hopper thread\n");
     exit(EXIT_FAILURE);
   }
 
