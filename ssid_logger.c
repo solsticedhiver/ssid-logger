@@ -384,6 +384,25 @@ int main(int argc, char *argv[]) {
 
   char errbuf[PCAP_ERRBUF_SIZE];
 
+  // just check if iface is in the list of known devices
+  pcap_if_t *devs = NULL;
+  if (pcap_findalldevs(&devs, errbuf) == 0) {
+    pcap_if_t *d = devs;
+    bool found = false;
+    while (!found && d != NULL) {
+      if ((strlen(d->name) == strlen(iface)) && (memcmp(d->name, iface, strlen(iface)) == 0)) {
+        found = true;
+        break;
+      }
+      d = d->next;
+    }
+    pcap_freealldevs(devs);
+    if (!found) {
+      fprintf(stderr, "Error: %s is not a known interface.\n", iface);
+      exit(EXIT_FAILURE);
+    }
+  }
+
   handle = pcap_open_live(iface, SNAP_LEN, 1, 1000, errbuf);
   if (handle == NULL) {
     fprintf(stderr, "Error: couldn't open device %s: %s\n", iface, errbuf);
