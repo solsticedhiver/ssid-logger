@@ -143,16 +143,16 @@ struct cipher_suite *parse_cipher_suite(u_char *start) {
   memcpy(cs->group_cipher_suite, start, 4);
 
   uint16_t pcsc = cs->pairwise_cipher_count = *(start + 4);
-  cs->pairwise_cipher_suite = malloc(pcsc);
+  cs->pairwise_cipher_suite = malloc(pcsc * sizeof(u_char *));
   for (int i=0; i< pcsc; i++) {
-    cs->pairwise_cipher_suite[i] = malloc(4);
+    cs->pairwise_cipher_suite[i] = malloc(4 * sizeof(u_char));
     memcpy(cs->pairwise_cipher_suite[i], start + 4 + 2 + i*4, 4);
   }
 
   uint16_t akmsc = cs->akm_cipher_count = *(start + 4 + 2 + pcsc*4);
-  cs->akm_cipher_suite = malloc(akmsc);
+  cs->akm_cipher_suite = malloc(akmsc * sizeof(u_char *));
   for (int i=0; i< akmsc; i++) {
-    cs->akm_cipher_suite[i] = malloc(4);
+    cs->akm_cipher_suite[i] = malloc(4 * sizeof(u_char));
     memcpy(cs->akm_cipher_suite[i], start + 4 + 2 + pcsc*4 + 2 + i*4, 4);
   }
   return cs;
@@ -310,8 +310,8 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
       switch(*ie) {
         case 0: // SSID aka IE with id 0
           ssid_len = *(ie + 1);
-          ssid = (u_char *)malloc(ssid_len + 1); // AP name
-          snprintf(ssid, ssid_len+1, "%s", ie + 2);
+          ssid = (u_char *)malloc((ssid_len + 1) * sizeof(u_char)); // AP name
+          snprintf(ssid, ssid_len + 1, "%s", ie + 2);
         case 3: // IE with id 3 is DS parameter set ~= channel
           channel = *(ie + 2);
           break;
@@ -343,8 +343,8 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   // print what we found
   if (!seen) {
     print_ssid_info(ssid, ssid_len, bssid, channel, freq, rssi, rsn, msw, ess, privacy, wps);
-    
-    u_char *new_seen = malloc(18);
+
+    u_char *new_seen = malloc(18 * sizeof(u_char));
     strncpy(new_seen, bssid, 18);
     already_seen_bssid[max_seen_bssid] = new_seen;
     max_seen_bssid++;
