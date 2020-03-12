@@ -212,66 +212,93 @@ int8_t parse_radiotap_header(const u_char *packet, uint16_t *freq, int8_t *rssi)
   return offset;
 }
 
+u_char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
+  bool ess, bool privacy, bool wps) {
+
+  // TODO: rewrite this so that there is safeguard not to overflow authmode string
+  u_char authmode[1024];
+  authmode[0] = '\0'; // this is needed from strcat to work
+  uint8_t last_byte;
+
+  if (msw != NULL) {
+    strcat(authmode, "[WPA-");
+    last_byte = (uint8_t)msw->akm_cipher_suite[0][3];
+    switch(last_byte) {
+      case 1:
+        strcat(authmode, "EAP-");
+        break;
+     case 2:
+        strcat(authmode, "PSK-");
+        break;
+    }
+    for (int i=0; i< msw->pairwise_cipher_count; i++) {
+      last_byte = (uint8_t)msw->pairwise_cipher_suite[i][3];
+      switch(last_byte) {
+        case 2:
+          strcat(authmode, "+TKIP");
+          break;
+        case 4:
+          strcat(authmode, "CCMP");
+          break;
+        case 1:
+          strcat(authmode, "+WEP-40");
+          break;
+        case 5:
+          strcat(authmode, "+WEP-104");
+          break;
+      }
+    }
+    strcat(authmode, "]");
+  }
+  if (rsn != NULL) {
+    strcat(authmode, "[WPA2-");
+    last_byte = (uint8_t)rsn->akm_cipher_suite[0][3];
+    switch(last_byte) {
+      case 1:
+        strcat(authmode, "EAP-");
+        break;
+      case 2:
+        strcat(authmode, "PSK-");
+        break;
+    }
+    for (int i=0; i< rsn->pairwise_cipher_count; i++) {
+      last_byte = (uint8_t)rsn->pairwise_cipher_suite[i][3];
+      switch(last_byte) {
+        case 2:
+          strcat(authmode, "+TKIP");
+          break;
+        case 4:
+          strcat(authmode, "CCMP");
+          break;
+      }
+    }
+    strcat(authmode, "]");
+  }
+  if (!rsn && !msw && privacy) {
+    strcat(authmode, "[WEP]");
+  }
+  if (wps) {
+    strcat(authmode, "[WPS]");
+  }
+  if (ess) {
+    strcat(authmode, "[ESS]");
+  }
+
+  u_char *tmp = malloc((strlen(authmode) + 1 ) * sizeof(u_char));
+  strcpy(tmp, authmode); // TODO: use safer copy function
+  return tmp;
+}
+
+
 void print_ssid_info(u_char *ssid, uint8_t ssid_len, u_char bssid[18], uint8_t channel,
   uint16_t freq, int8_t rssi, struct cipher_suite *rsn, struct cipher_suite *msw,
   bool ess, bool privacy, bool wps) {
 
-  printf("%s (%s)\n    CH%3d %4dMHz %ddBm ", ssid_len != 0 ? ssid : EMPTY_SSID, bssid, channel, freq, rssi);
-  if (msw != NULL) {
-    printf("[WPA-");
-    if (msw->akm_cipher_suite[0][3] == 1) {
-      printf("EAP-");
-    } else if (msw->akm_cipher_suite[0][3] == 2) {
-      printf("PSK-");
-    }
-    for (int i=0; i< msw->pairwise_cipher_count; i++) {
-      if (msw->pairwise_cipher_suite[i][3] == 2) {
-        printf("+TKIP");
-      } else if (msw->pairwise_cipher_suite[i][3] == 4) {
-        printf("CCMP");
-      } else if (msw->pairwise_cipher_suite[i][3] == 1) {
-        printf("+WEP-40");
-      } else if (msw->pairwise_cipher_suite[i][3] == 5) {
-        printf("+WEP-104");
-      }
-    }
-    printf("]");
-  }
-  if (rsn != NULL) {
-    printf("[WPA2-");
-    u_char last_byte = rsn->akm_cipher_suite[0][3];
-    switch(last_byte) {
-      case 1:
-        printf("EAP-");
-        break;
-      case 2:
-        printf("PSK-");
-        break;
-    }
-    for (int i=0; i< rsn->pairwise_cipher_count; i++) {
-      u_char last_byte = rsn->pairwise_cipher_suite[i][3];
-      switch(last_byte) {
-        case 2:
-          printf("+TKIP");
-          break;
-        case 4:
-          printf("CCMP");
-          break;
-      }
-    }
-    printf("]");
-  }
-  if (!rsn && !msw && privacy) {
-    printf("[WEP]");
-  }
-  if (wps) {
-    printf("[WPS]");
-  }
-  if (ess) {
-    printf("[ESS]");
-  }
-  printf("\n");
+  u_char *authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  printf("%s (%s)\n    CH%3d %4dMHz %ddBm %s\n", ssid_len != 0 ? ssid : EMPTY_SSID, bssid, channel, freq, rssi, authmode);
   fflush(stdout);
+  free(authmode);
+  return;
 }
 
 void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
