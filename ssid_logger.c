@@ -22,7 +22,7 @@
 #define WPS_ID "\000\120\362\004" // 0x000x500xF20x04 or 00-50-F2-04
 
 static const u_char *CIPHER_SUITE_SELECTORS[] = {"Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP"};
-static const u_char EMPTY_SSID[] = "***";
+static const u_char HIDDEN_SSID[] = "***";
 static const uint8_t CHANNELS[] = {1,4,7,10,13,2,5,8,11,3,6,9,12};
 
 #define HOP_PER_SECOND 5
@@ -217,7 +217,7 @@ u_char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
 
   // TODO: rewrite this so that there is safeguard not to overflow authmode string
   u_char authmode[1024];
-  authmode[0] = '\0'; // this is needed from strcat to work
+  authmode[0] = '\0'; // this is needed for strcat to work
   uint8_t last_byte;
 
   if (msw != NULL) {
@@ -295,7 +295,7 @@ void print_ssid_info(u_char *ssid, uint8_t ssid_len, u_char bssid[18], uint8_t c
   bool ess, bool privacy, bool wps) {
 
   u_char *authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
-  printf("%s (%s)\n    CH%3d %4dMHz %ddBm %s\n", ssid_len != 0 ? ssid : EMPTY_SSID, bssid, channel, freq, rssi, authmode);
+  printf("%s (%s)\n    CH%3d %4dMHz %ddBm %s\n", ssid_len != 0 ? ssid : HIDDEN_SSID, bssid, channel, freq, rssi, authmode);
   fflush(stdout);
   free(authmode);
   return;
