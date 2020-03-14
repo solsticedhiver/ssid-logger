@@ -339,6 +339,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
           ssid_len = *(ie + 1);
           ssid = (u_char *)malloc((ssid_len + 1) * sizeof(u_char)); // AP name
           snprintf(ssid, ssid_len + 1, "%s", ie + 2);
+          break;
         case 3: // IE with id 3 is DS parameter set ~= channel
           channel = *(ie + 2);
           break;
