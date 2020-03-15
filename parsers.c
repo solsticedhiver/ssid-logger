@@ -102,11 +102,11 @@ int8_t parse_radiotap_header(const u_char *packet, uint16_t *freq, int8_t *rssi)
   return offset;
 }
 
-u_char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
+char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
   bool ess, bool privacy, bool wps) {
 
   // TODO: rewrite this so that there is safeguard not to overflow authmode string
-  u_char authmode[1024];
+  char authmode[1024];
   authmode[0] = '\0'; // this is needed for strcat to work
   uint8_t last_byte;
 
@@ -174,7 +174,7 @@ u_char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
     strcat(authmode, "[ESS]");
   }
 
-  u_char *tmp = malloc((strlen(authmode) + 1 ) * sizeof(u_char));
+  char *tmp = malloc((strlen(authmode) + 1 ) * sizeof(char));
   strcpy(tmp, authmode); // TODO: use safer copy function
   return tmp;
 }

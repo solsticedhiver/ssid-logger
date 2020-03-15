@@ -10,7 +10,7 @@
 
 void *hop_channel(void *arg) {
   // based on https://stackoverflow.com/a/53602395/283067
-  u_char *device = (u_char *)arg;
+  char *device = (char *)arg;
   uint8_t indx = 0;
   uint32_t freq = 2412 + (CHANNELS[0]-1)*5;
   size_t chan_number = sizeof(CHANNELS)/sizeof(uint8_t);

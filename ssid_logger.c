@@ -22,7 +22,7 @@
 
 #define MAX_QUEUE_SIZE 128
 
-static const u_char *CIPHER_SUITE_SELECTORS[] = {"Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP"};
+static const char *CIPHER_SUITE_SELECTORS[] = {"Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP"};
 
 pcap_t *handle; // global, to use it in sigint_handler
 queue_t *queue;
@@ -49,7 +49,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   // parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
   // BSSID
   const u_char *bssid_addr = packet + offset + 2 + 2 + 6 + 6; // FC + duration + DA + SA
-  u_char bssid[18];
+  char bssid[18];
   sprintf(bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0], bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4], bssid_addr[5]);
 
   // Capability Info
@@ -59,7 +59,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   bool ess = (bool)(ci_fields & 0x0001);
   bool privacy = (bool)((ci_fields & 0x0010) >> 4);
 
-  u_char *ssid = NULL;
+  char *ssid = NULL;
   u_char *ie = (u_char *)ci_addr + 2;
   uint8_t ie_len = *(ie + 1);
   uint8_t channel = 0, ssid_len = 0;
@@ -73,7 +73,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
       switch(*ie) {
         case 0: // SSID aka IE with id 0
           ssid_len = *(ie + 1);
-          ssid = (u_char *)malloc((ssid_len + 1) * sizeof(u_char)); // AP name
+          ssid = (char *)malloc((ssid_len + 1) * sizeof(u_char)); // AP name
           snprintf(ssid, ssid_len + 1, "%s", ie + 2);
           break;
         case 3: // IE with id 3 is DS parameter set ~= channel
@@ -191,7 +191,7 @@ int main(int argc, char *argv[]) {
 
   // only capture beacon frames
   struct bpf_program bfp;
-  u_char filter_exp[] = "type mgt subtype beacon";
+  char filter_exp[] = "type mgt subtype beacon";
 
   if (pcap_compile(handle, &bfp, filter_exp, 1, PCAP_NETMASK_UNKNOWN) == -1) {
     fprintf(stderr, "Error: couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));

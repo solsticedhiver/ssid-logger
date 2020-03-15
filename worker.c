@@ -8,18 +8,18 @@
 #include "queue.h"
 #include "worker.h"
 
-static const u_char HIDDEN_SSID[] = "***";
+static const char HIDDEN_SSID[] = "***";
 
 pthread_cond_t cv;
 pthread_mutex_t lock_queue;
 extern queue_t *queue;
 
-u_char *already_seen_bssid[64];
+char *already_seen_bssid[64];
 uint8_t max_seen_bssid = 0;
 
 void print_ssid_info(struct ap_info *ap) {
 
-  u_char *authmode = authmode_from_crypto(ap->rsn, ap->msw, ap->ess, ap->privacy, ap->wps);
+  char *authmode = authmode_from_crypto(ap->rsn, ap->msw, ap->ess, ap->privacy, ap->wps);
   printf("%s (%s)\n    CH%3d %4dMHz %ddBm %s\n", strlen(ap->ssid) != 0 ? ap->ssid : HIDDEN_SSID, ap->bssid, ap->channel, ap->freq, ap->rssi, authmode);
   fflush(stdout);
   free(authmode);
@@ -58,7 +58,7 @@ void *process_queue(void *args) {
       if (!seen) {
         print_ssid_info(ap);
 
-        u_char *new_seen = malloc(18 * sizeof(u_char));
+        char *new_seen = malloc(18 * sizeof(u_char));
         strncpy(new_seen, ap->bssid, 18);
         already_seen_bssid[max_seen_bssid] = new_seen;
         max_seen_bssid++;
