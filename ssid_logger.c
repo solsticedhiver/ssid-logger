@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <time.h>
 
 #include "queue.h"
 #include "hopper.h"
@@ -27,6 +28,7 @@ pcap_t *handle; // global, to use it in sigint_handler
 queue_t *queue;
 pthread_mutex_t lock_queue;
 pthread_cond_t cv;
+struct timespec start_ts;
 
 extern void *process_queue(void *args);
 
@@ -108,8 +110,11 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
 
   pthread_mutex_lock(&lock_queue);
   enqueue(queue, ap);
-  if (queue->size == MAX_QUEUE_SIZE/2) {
-    // the queue is half full; go and wake up the worker thread to process that
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  if (queue->size == MAX_QUEUE_SIZE/2 || now.tv_sec-start_ts.tv_sec >= 1) {
+    start_ts = now;
+    // the queue is half full or it's been more than a second; waking up the worker thread to process that
     pthread_cond_signal(&cv);
   }
   pthread_mutex_unlock(&lock_queue);
@@ -219,6 +224,8 @@ int main(int argc, char *argv[]) {
   struct sigaction act;
   act.sa_handler = sigint_handler;
   sigaction(SIGINT, &act, NULL);
+
+  clock_gettime(CLOCK_MONOTONIC, &start_ts);
 
   pcap_loop(handle, -1, (pcap_handler)got_packet, NULL);
 
