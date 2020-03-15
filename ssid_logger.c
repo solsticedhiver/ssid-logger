@@ -63,7 +63,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   u_char *ie = (u_char *)ci_addr + 2;
   uint8_t ie_len = *(ie + 1);
   uint8_t channel = 0, ssid_len = 0;
-  bool wps = false;
+  bool wps = false, utf8_ssid = false;
 
   struct cipher_suite *rsn = NULL;
   struct cipher_suite *msw = NULL;
@@ -81,6 +81,11 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
           break;
         case 48: // parse RSN IE
           rsn = parse_cipher_suite(ie + 4);
+          break;
+        case 127: // Extended Capabilities IE
+          if (ie_len >= 7) {
+              utf8_ssid = (bool)(*(ie + 1 + 7) & 0x01);
+          }
           break;
         case 221:
           if (memcmp(ie + 2, MS_OUI "\001\001", 5) == 0) {
