@@ -5,6 +5,7 @@
 #include <linux/nl80211.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "hopper.h"
 
@@ -47,6 +48,8 @@ void *hop_channel(void *arg)
     freq = 2412 + (CHANNELS[indx] - 1) * 5;     // 2.4GHz band only for now
 
     usleep(SLEEP_DURATION);
+    
+    pthread_testcancel();
     continue;
 
   nla_put_failure:

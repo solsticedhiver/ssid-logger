@@ -11,12 +11,15 @@ worker thread that will process the queue filled by got_packet()
 #include "parsers.h"
 #include "queue.h"
 #include "worker.h"
+#include "gps.h"
 
 static const char HIDDEN_SSID[] = "***";
 
 pthread_cond_t cv;
 pthread_mutex_t lock_queue;
+pthread_mutex_t lock_gloc;
 extern queue_t *queue;
+struct gps_loc gloc;            // global variable to hold retrieved gps data
 
 char *already_seen_bssid[64];
 uint8_t max_seen_bssid = 0;
@@ -36,14 +39,16 @@ void print_ssid_info(struct ap_info *ap)
 void *process_queue(void *args)
 {
   pthread_mutex_init(&lock_queue, NULL);
+  pthread_mutex_init(&lock_gloc, NULL);
   struct ap_info *ap;
   struct ap_info **aps;
+  int qs;
 
   while (1) {
     pthread_mutex_lock(&lock_queue);
     pthread_cond_wait(&cv, &lock_queue);
 
-    int qs = queue->size;
+    qs = queue->size;
     aps = malloc(sizeof(struct ap_info *) * qs);
     // off-load queue to a tmp array
     for (int i = 0; i < qs; i++) {
@@ -66,6 +71,9 @@ void *process_queue(void *args)
       // print what we found
       if (!seen) {
         print_ssid_info(ap);
+        pthread_mutex_lock(&lock_gloc);
+        printf("lat:%f, lon:%f, alt:%f, %d\n", gloc.lat, gloc.lon, gloc.alt, gloc.time.tv_sec);
+        pthread_mutex_unlock(&lock_gloc);
 
         char *new_seen = malloc(18 * sizeof(u_char));
         strncpy(new_seen, ap->bssid, 18);

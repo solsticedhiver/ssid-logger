@@ -14,6 +14,7 @@
 #include "hopper.h"
 #include "parsers.h"
 #include "worker.h"
+#include "gps.h"
 
 #define SNAP_LEN 512
 #define CSS_OUI "\000\017\254"  // 0x000x0F0xAC or 00-0F-AC
@@ -27,7 +28,12 @@ static const char *CIPHER_SUITE_SELECTORS[] =
 
 pcap_t *handle;                 // global, to use it in sigint_handler
 queue_t *queue;                 // queue to hold parsed ap infos
+
+pthread_t hopper;
+pthread_t worker;
+pthread_t gps;
 pthread_mutex_t lock_queue;
+pthread_mutex_t lock_gloc;
 pthread_cond_t cv;
 struct timespec start_ts;
 
@@ -217,7 +223,6 @@ int main(int argc, char *argv[])
   }
   pcap_freecode(&bfp);
 
-  pthread_t hopper;
   // start the channel hopper thread
   if (pthread_create(&hopper, NULL, hop_channel, iface)) {
     fprintf(stderr, "Error creating channel hopper thread\n");
@@ -227,10 +232,16 @@ int main(int argc, char *argv[])
   pthread_cond_init(&cv, NULL);
   pthread_mutex_init(&lock_queue, NULL);
   queue = new_queue(MAX_QUEUE_SIZE);
-  pthread_t worker;
   // start the helper worker thread
   if (pthread_create(&worker, NULL, process_queue, NULL)) {
     fprintf(stderr, "Error creating worker thread\n");
+    exit(EXIT_FAILURE);
+  }
+
+  pthread_mutex_init(&lock_gloc, NULL);
+  // start the helper worker thread
+  if (pthread_create(&gps, NULL, retrieve_gps_data, NULL)) {
+    fprintf(stderr, "Error creating gps thread\n");
     exit(EXIT_FAILURE);
   }
 
@@ -247,6 +258,7 @@ int main(int argc, char *argv[])
 
   pthread_cancel(hopper);
   pthread_cancel(worker);
+  pthread_cancel(gps);
 
   // free up elements of the queue
   int qs = queue->size;

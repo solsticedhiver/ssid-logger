@@ -11,5 +11,5 @@ clean:
 %.o: %.c
 	gcc -O2 $(NL_FLAGS) -c $<
 
-ssid_logger: ssid_logger.o radiotap.o queue.o hopper.o parsers.o worker.o
-	gcc $(NL_FLAGS) -lpthread -lpcap -o ssid_logger ssid_logger.o radiotap.o queue.o hopper.o parsers.o worker.o
+ssid_logger: ssid_logger.o radiotap.o queue.o hopper.o parsers.o worker.o gps.o
+	gcc $(NL_FLAGS) -lgps -lpthread -lpcap -o ssid_logger ssid_logger.o radiotap.o queue.o hopper.o parsers.o worker.o gps.o
