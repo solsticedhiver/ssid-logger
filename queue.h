@@ -15,10 +15,10 @@ typedef struct Queue {
 
 extern queue_t *new_queue(int capacity);
 
-extern int enqueue(queue_t *q, void *value);
+extern int enqueue(queue_t * q, void *value);
 
-extern void* dequeue(queue_t *q);
+extern void *dequeue(queue_t * q);
 
-extern void free_queue(queue_t *q);
+extern void free_queue(queue_t * q);
 
 #endif

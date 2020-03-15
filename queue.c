@@ -18,7 +18,7 @@ queue_t *new_queue(int capacity)
   return q;
 }
 
-int enqueue(queue_t *q, void *value)
+int enqueue(queue_t * q, void *value)
 {
   if ((q->size + 1) > q->max_size) {
     return q->size;
@@ -49,7 +49,7 @@ int enqueue(queue_t *q, void *value)
   return q->size;
 }
 
-void* dequeue(queue_t *q)
+void *dequeue(queue_t * q)
 {
   if (q->size == 0) {
     return NULL;
@@ -68,7 +68,7 @@ void* dequeue(queue_t *q)
   return value;
 }
 
-void free_queue(queue_t *q)
+void free_queue(queue_t * q)
 {
   if (q == NULL) {
     return;
@@ -88,5 +88,5 @@ void free_queue(queue_t *q)
     free(q->tail);
   }
 
-  free (q);
+  free(q);
 }

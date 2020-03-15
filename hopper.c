@@ -8,12 +8,13 @@
 
 #include "hopper.h"
 
-void *hop_channel(void *arg) {
+void *hop_channel(void *arg)
+{
   // based on https://stackoverflow.com/a/53602395/283067
-  char *device = (char *)arg;
+  char *device = (char *) arg;
   uint8_t indx = 0;
-  uint32_t freq = 2412 + (CHANNELS[0]-1)*5;
-  size_t chan_number = sizeof(CHANNELS)/sizeof(uint8_t);
+  uint32_t freq = 2412 + (CHANNELS[0] - 1) * 5;
+  size_t chan_number = sizeof(CHANNELS) / sizeof(uint8_t);
   struct nl_msg *msg;
 
   // Create the socket and connect to it
@@ -43,12 +44,12 @@ void *hop_channel(void *arg) {
     if (indx == chan_number) {
       indx = 0;
     }
-    freq = 2412 + (CHANNELS[indx]-1)*5; // 2.4GHz band only for now
+    freq = 2412 + (CHANNELS[indx] - 1) * 5;     // 2.4GHz band only for now
 
     usleep(SLEEP_DURATION);
     continue;
 
-nla_put_failure:
+  nla_put_failure:
     nlmsg_free(msg);
     fprintf(stderr, "Error: couldn't send PUT command to interface\n");
     fflush(stderr);

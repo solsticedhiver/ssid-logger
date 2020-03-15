@@ -16,28 +16,29 @@
 #include "worker.h"
 
 #define SNAP_LEN 512
-#define CSS_OUI "\000\017\254" // 0x000x0F0xAC or 00-0F-AC
-#define MS_OUI "\000\120\362" // 0x000x500xF2 or 00-50-F2
-#define WPS_ID "\000\120\362\004" // 0x000x500xF20x04 or 00-50-F2-04
+#define CSS_OUI "\000\017\254"  // 0x000x0F0xAC or 00-0F-AC
+#define MS_OUI "\000\120\362"   // 0x000x500xF2 or 00-50-F2
+#define WPS_ID "\000\120\362\004"       // 0x000x500xF20x04 or 00-50-F2-04
 
 #define MAX_QUEUE_SIZE 128
 
-static const char *CIPHER_SUITE_SELECTORS[] = {"Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP"};
+static const char *CIPHER_SUITE_SELECTORS[] =
+    { "Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP" };
 
-pcap_t *handle; // global, to use it in sigint_handler
-queue_t *queue;
+pcap_t *handle;                 // global, to use it in sigint_handler
+queue_t *queue;                 // queue to hold parsed ap infos
 pthread_mutex_t lock_queue;
 pthread_cond_t cv;
 struct timespec start_ts;
 
-extern void *process_queue(void *args);
-
-void sigint_handler(int s) {
+void sigint_handler(int s)
+{
   // stop pcap capture loop
   pcap_breakloop(handle);
 }
 
-void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
+void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char * packet)
+{
   uint16_t freq;
   int8_t rssi;
   // parse radiotap header
@@ -48,19 +49,21 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
 
   // parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
   // BSSID
-  const u_char *bssid_addr = packet + offset + 2 + 2 + 6 + 6; // FC + duration + DA + SA
+  const u_char *bssid_addr = packet + offset + 2 + 2 + 6 + 6;   // FC + duration + DA + SA
   char bssid[18];
-  sprintf(bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0], bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4], bssid_addr[5]);
+  sprintf(bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0],
+    bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4],
+    bssid_addr[5]);
 
   // Capability Info
   const u_char *ci_addr = bssid_addr + 6 + 2 + 8 + 2;
   uint16_t ci_fields;
   memcpy(&ci_fields, ci_addr, sizeof(ci_fields));
-  bool ess = (bool)(ci_fields & 0x0001);
-  bool privacy = (bool)((ci_fields & 0x0010) >> 4);
+  bool ess = (bool) (ci_fields & 0x0001);
+  bool privacy = (bool) ((ci_fields & 0x0010) >> 4);
 
   char *ssid = NULL;
-  u_char *ie = (u_char *)ci_addr + 2;
+  u_char *ie = (u_char *) ci_addr + 2;
   uint8_t ie_len = *(ie + 1);
   uint8_t channel = 0, ssid_len = 0;
   bool wps = false, utf8_ssid = false;
@@ -69,32 +72,32 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   struct cipher_suite *msw = NULL;
   // iterate over Information Element to look for SSID and RSN crypto and MicrosoftWPA
   while (ie < packet + header->len) {
-    if ((ie + ie_len + 2 < packet + header->len)) { // just double check that this is an IE with length inside packet
-      switch(*ie) {
-        case 0: // SSID aka IE with id 0
-          ssid_len = *(ie + 1);
-          ssid = (char *)malloc((ssid_len + 1) * sizeof(u_char)); // AP name
-          snprintf(ssid, ssid_len + 1, "%s", ie + 2);
-          break;
-        case 3: // IE with id 3 is DS parameter set ~= channel
-          channel = *(ie + 2);
-          break;
-        case 48: // parse RSN IE
-          rsn = parse_cipher_suite(ie + 4);
-          break;
-        case 127: // Extended Capabilities IE
-          if (ie_len >= 7) {
-              utf8_ssid = (bool)(*(ie + 1 + 7) & 0x01);
-          }
-          break;
-        case 221:
-          if (memcmp(ie + 2, MS_OUI "\001\001", 5) == 0) {
-            // parse MicrosoftWPA IE
-            msw = parse_cipher_suite(ie + 8);
-          } else if (memcmp (ie +2, WPS_ID, 4) == 0) {
-            wps = true;
-          }
-          break;
+    if ((ie + ie_len + 2 < packet + header->len)) {     // just double check that this is an IE with length inside packet
+      switch (*ie) {
+      case 0:                  // SSID aka IE with id 0
+        ssid_len = *(ie + 1);
+        ssid = (char *) malloc((ssid_len + 1) * sizeof(u_char));        // AP name
+        snprintf(ssid, ssid_len + 1, "%s", ie + 2);
+        break;
+      case 3:                  // IE with id 3 is DS parameter set ~= channel
+        channel = *(ie + 2);
+        break;
+      case 48:                 // parse RSN IE
+        rsn = parse_cipher_suite(ie + 4);
+        break;
+      case 127:                // Extended Capabilities IE
+        if (ie_len >= 7) {
+          utf8_ssid = (bool) (*(ie + 1 + 7) & 0x01);
+        }
+        break;
+      case 221:
+        if (memcmp(ie + 2, MS_OUI "\001\001", 5) == 0) {
+          // parse MicrosoftWPA IE
+          msw = parse_cipher_suite(ie + 8);
+        } else if (memcmp(ie + 2, WPS_ID, 4) == 0) {
+          wps = true;
+        }
+        break;
       }
     }
     ie = ie + ie_len + 2;
@@ -117,7 +120,8 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   enqueue(queue, ap);
   struct timespec now;
   clock_gettime(CLOCK_MONOTONIC, &now);
-  if (queue->size == MAX_QUEUE_SIZE/2 || now.tv_sec-start_ts.tv_sec >= 1) {
+  if (queue->size == MAX_QUEUE_SIZE / 2
+      || now.tv_sec - start_ts.tv_sec >= 1) {
     start_ts = now;
     // the queue is half full or it's been more than a second; waking up the worker thread to process that
     pthread_cond_signal(&cv);
@@ -125,24 +129,26 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
   pthread_mutex_unlock(&lock_queue);
 }
 
-void usage(void) {
+void usage(void)
+{
   printf("Usage: ssid_logger -i INTERFACE\n");
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
   char *iface = NULL;
   int opt;
-  while((opt = getopt(argc, argv, "i:")) != -1)  {
-    switch(opt)  {
-      case 'i':
-        iface = optarg;
-        break;
-      case '?':
-        usage();
-        exit(EXIT_FAILURE);
-      default:
-        usage();
-        exit(EXIT_FAILURE);
+  while ((opt = getopt(argc, argv, "i:")) != -1) {
+    switch (opt) {
+    case 'i':
+      iface = optarg;
+      break;
+    case '?':
+      usage();
+      exit(EXIT_FAILURE);
+    default:
+      usage();
+      exit(EXIT_FAILURE);
     }
   }
 
@@ -160,7 +166,8 @@ int main(int argc, char *argv[]) {
     pcap_if_t *d = devs;
     bool found = false;
     while (!found && d != NULL) {
-      if ((strlen(d->name) == strlen(iface)) && (memcmp(d->name, iface, strlen(iface)) == 0)) {
+      if ((strlen(d->name) == strlen(iface))
+          && (memcmp(d->name, iface, strlen(iface)) == 0)) {
         found = true;
         break;
       }
@@ -199,11 +206,13 @@ int main(int argc, char *argv[]) {
   char filter_exp[] = "type mgt subtype beacon";
 
   if (pcap_compile(handle, &bfp, filter_exp, 1, PCAP_NETMASK_UNKNOWN) == -1) {
-    fprintf(stderr, "Error: couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
+    fprintf(stderr, "Error: couldn't parse filter %s: %s\n",
+            filter_exp, pcap_geterr(handle));
     exit(EXIT_FAILURE);
   }
   if (pcap_setfilter(handle, &bfp) == -1) {
-    fprintf(stderr, "Error: couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
+    fprintf(stderr, "Error: couldn't install filter %s: %s\n",
+            filter_exp, pcap_geterr(handle));
     exit(EXIT_FAILURE);
   }
   pcap_freecode(&bfp);
@@ -232,7 +241,7 @@ int main(int argc, char *argv[]) {
 
   clock_gettime(CLOCK_MONOTONIC, &start_ts);
 
-  pcap_loop(handle, -1, (pcap_handler)got_packet, NULL);
+  pcap_loop(handle, -1, (pcap_handler) got_packet, NULL);
 
   pcap_close(handle);
 
@@ -242,14 +251,16 @@ int main(int argc, char *argv[]) {
   // free up elements of the queue
   int qs = queue->size;
   struct ap_info *ap;
-  for (int i= 0; i<qs; i++) {
-      ap = (struct ap_info *)dequeue(queue);
-      if (ap->rsn != NULL) free_cipher_suite(ap->rsn);
-      if (ap->msw != NULL) free_cipher_suite(ap->msw);
-      free(ap->ssid);
-      free(ap);
+  for (int i = 0; i < qs; i++) {
+    ap = (struct ap_info *) dequeue(queue);
+    if (ap->rsn != NULL)
+      free_cipher_suite(ap->rsn);
+    if (ap->msw != NULL)
+      free_cipher_suite(ap->msw);
+    free(ap->ssid);
+    free(ap);
   }
   free(queue);
 
-  return(0);
+  return (0);
 }
