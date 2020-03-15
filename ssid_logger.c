@@ -216,7 +216,9 @@ int main(int argc, char *argv[]) {
   }
 
   // catch CTRL+C to break loop cleanly
-  signal(SIGINT, sigint_handler);
+  struct sigaction act;
+  act.sa_handler = sigint_handler;
+  sigaction(SIGINT, &act, NULL);
 
   pcap_loop(handle, -1, (pcap_handler)got_packet, NULL);
 
