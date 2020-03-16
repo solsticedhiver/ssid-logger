@@ -1,3 +1,7 @@
+/*
+thread whose sole purpose is to switch the channel of the interface card
+following the predefined pattern set in CHANNELS
+*/
 #include <net/if.h>
 #include <netlink/netlink.h>
 #include <netlink/genl/genl.h>
@@ -48,7 +52,7 @@ void *hop_channel(void *arg)
     freq = 2412 + (CHANNELS[indx] - 1) * 5;     // 2.4GHz band only for now
 
     usleep(SLEEP_DURATION);
-    
+
     pthread_testcancel();
     continue;
 
