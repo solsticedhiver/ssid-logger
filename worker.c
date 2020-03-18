@@ -72,7 +72,7 @@ void *process_queue(void *args)
       if (!seen) {
         print_ssid_info(ap);
         pthread_mutex_lock(&lock_gloc);
-        printf("lat:%f, lon:%f, alt:%f, %d\n", gloc.lat, gloc.lon, gloc.alt, gloc.time.tv_sec);
+        printf("lat:%f, lon:%f, alt:%f, %ld\n", gloc.lat, gloc.lon, gloc.alt, gloc.time.tv_sec);
         pthread_mutex_unlock(&lock_gloc);
 
         char *new_seen = malloc(18 * sizeof(u_char));
