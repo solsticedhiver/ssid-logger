@@ -137,7 +137,7 @@ void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char * 
 
 void usage(void)
 {
-  printf("Usage: ssid_logger -i INTERFACE\n");
+  printf("Usage: ssid-logger -i INTERFACE\n");
 }
 
 int main(int argc, char *argv[])
