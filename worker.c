@@ -7,11 +7,13 @@ worker thread that will process the queue filled by got_packet()
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <sqlite3.h>
 
 #include "parsers.h"
 #include "queue.h"
 #include "worker.h"
 #include "gps.h"
+#include "db.h"
 
 static const char HIDDEN_SSID[] = "***";
 
@@ -20,9 +22,18 @@ pthread_mutex_t lock_queue;
 pthread_mutex_t lock_gloc;
 extern queue_t *queue;
 struct gps_loc gloc;            // global variable to hold retrieved gps data
+sqlite3 *db;
 
-char *already_seen_bssid[64];
-uint8_t max_seen_bssid = 0;
+void free_ap_info(struct ap_info *ap)
+{
+  if (ap->rsn != NULL)
+    free_cipher_suite(ap->rsn);
+  if (ap->msw != NULL)
+    free_cipher_suite(ap->msw);
+  free(ap->ssid);
+  free(ap);
+  ap = NULL;
+}
 
 void print_ssid_info(struct ap_info *ap)
 {
@@ -60,26 +71,11 @@ void *process_queue(void *args)
     // process the array after having unlock the queue
     for (int j = 0; j < qs; j++) {
       ap = aps[j];
-      // has that bssid already been seen ?
-      bool seen = false;
-      for (int i = 0; i < max_seen_bssid; i++) {
-        if (memcmp(already_seen_bssid[i], ap->bssid, 18) == 0) {
-          seen = true;
-          break;
-        }
+      pthread_mutex_lock(&lock_gloc);
+      if (gloc.lat && gloc.lon) {
+        insert_beacon(*ap, gloc, db); // TODO: we need to use a cache to avoid writing to disk every second
       }
-      // print what we found
-      if (!seen) {
-        print_ssid_info(ap);
-        pthread_mutex_lock(&lock_gloc);
-        printf("lat:%f, lon:%f, alt:%f, %ld\n", gloc.lat, gloc.lon, gloc.alt, gloc.time.tv_sec);
-        pthread_mutex_unlock(&lock_gloc);
-
-        char *new_seen = malloc(18 * sizeof(u_char));
-        strncpy(new_seen, ap->bssid, 18);
-        already_seen_bssid[max_seen_bssid] = new_seen;
-        max_seen_bssid++;
-      }
+      pthread_mutex_unlock(&lock_gloc);
     }
     for (int j = 0; j < qs; j++) {
       ap = aps[j];

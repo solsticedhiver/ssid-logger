@@ -2,6 +2,8 @@
 #define WORKER_H
 
 #include <ctype.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 struct ap_info {
   char bssid[18];
@@ -17,5 +19,6 @@ struct ap_info {
 };
 
 void *process_queue(void *args);
+void free_ap_info(struct ap_info *ap);
 
 #endif

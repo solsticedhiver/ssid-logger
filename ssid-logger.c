@@ -9,12 +9,14 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <time.h>
+#include <sqlite3.h>
 
 #include "queue.h"
 #include "hopper.h"
 #include "parsers.h"
 #include "worker.h"
 #include "gps.h"
+#include "db.h"
 
 #define SNAP_LEN 512
 #define CSS_OUI "\000\017\254"  // 0x000x0F0xAC or 00-0F-AC
@@ -22,6 +24,8 @@
 #define WPS_ID "\000\120\362\004"       // 0x000x500xF20x04 or 00-50-F2-04
 
 #define MAX_QUEUE_SIZE 128
+
+#define DB_NAME "beacon.db"
 
 static const char *CIPHER_SUITE_SELECTORS[] =
     { "Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP" };
@@ -36,6 +40,8 @@ pthread_mutex_t lock_queue;
 pthread_mutex_t lock_gloc;
 pthread_cond_t cv;
 struct timespec start_ts;
+
+sqlite3 *db;
 
 void sigint_handler(int s)
 {
@@ -144,10 +150,13 @@ int main(int argc, char *argv[])
 {
   char *iface = NULL;
   int opt;
-  while ((opt = getopt(argc, argv, "i:")) != -1) {
+  while ((opt = getopt(argc, argv, "i:h")) != -1) {
     switch (opt) {
     case 'i':
       iface = optarg;
+      break;
+    case 'h':
+      usage();
       break;
     case '?':
       usage();
@@ -252,6 +261,8 @@ int main(int argc, char *argv[])
 
   clock_gettime(CLOCK_MONOTONIC, &start_ts);
 
+  init_beacon_db(DB_NAME, &db);
+
   pcap_loop(handle, -1, (pcap_handler) got_packet, NULL);
 
   pcap_close(handle);
@@ -265,14 +276,11 @@ int main(int argc, char *argv[])
   struct ap_info *ap;
   for (int i = 0; i < qs; i++) {
     ap = (struct ap_info *) dequeue(queue);
-    if (ap->rsn != NULL)
-      free_cipher_suite(ap->rsn);
-    if (ap->msw != NULL)
-      free_cipher_suite(ap->msw);
-    free(ap->ssid);
-    free(ap);
+    free_ap_info(ap);
   }
   free(queue);
+
+  sqlite3_close(db);
 
   return (0);
 }
