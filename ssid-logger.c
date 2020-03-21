@@ -313,6 +313,9 @@ int main(int argc, char *argv[])
     begin_txn(db);
   }
 
+  // we have to cheat a little and print the message before pcap_loop
+  printf(":: Started sniffing beacon on %s, writing to %s\n", iface, file_name);
+  printf("Hit CTRL+C to quit\n");
   pcap_loop(handle, -1, (pcap_handler) got_packet, NULL);
 
   pcap_close(handle);
