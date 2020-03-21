@@ -180,6 +180,7 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db)
   ap_id = insert_ap(ap, db);
   char *authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
   authmode_id = insert_authmode(authmode, db);
+  free(authmode);
   time_t now = time(NULL);
 
   char sql[256];

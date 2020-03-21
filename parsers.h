@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "gps.h"
+#include "worker.h"
+
 struct cipher_suite {
   u_char group_cipher_suite[4];
   uint16_t pairwise_cipher_count;
@@ -23,4 +26,5 @@ extern char *authmode_from_crypto(struct cipher_suite *rsn,
                                   struct cipher_suite *msw, bool ess,
                                   bool privacy, bool wps);
 
+char *ap_to_str(struct ap_info ap, struct gps_loc gloc);
 #endif

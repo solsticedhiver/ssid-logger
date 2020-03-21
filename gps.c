@@ -53,10 +53,11 @@ void *retrieve_gps_data(void *arg)
           gloc.lat = gps_data.fix.latitude;
           gloc.lon = gps_data.fix.longitude;
           gloc.alt = gps_data.fix.altHAE;
-           // we use the system clock to avoid problem if
-           // the system clock and the gps time are not in sync
-           // gloc.time is only used for relative timing
-          clock_gettime(CLOCK_MONOTONIC, &gloc.time);
+          gloc.ftime = gps_data.fix.time;
+          // we use the system clock to avoid problem if
+          // the system clock and the gps time are not in sync
+          // gloc.ctime is only used for relative timing
+          clock_gettime(CLOCK_MONOTONIC, &gloc.ctime);
           pthread_mutex_unlock(&lock_gloc);
         }
       }

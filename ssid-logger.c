@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <sqlite3.h>
+#include <time.h>
 
 #include "queue.h"
 #include "hopper.h"
@@ -18,6 +19,7 @@
 #include "gps.h"
 #include "db.h"
 
+#define VERSION "0.1"
 #define SNAP_LEN 512
 #define CSS_OUI "\000\017\254"  // 0x000x0F0xAC or 00-0F-AC
 #define MS_OUI "\000\120\362"   // 0x000x500xF2 or 00-50-F2
@@ -41,7 +43,9 @@ pthread_mutex_t lock_gloc;
 pthread_cond_t cv;
 struct timespec start_ts;
 
-sqlite3 *db;
+sqlite3 *db = NULL;
+bool format_csv = false;
+FILE *file_ptr = NULL;
 
 void sigint_handler(int s)
 {
@@ -143,20 +147,30 @@ void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char * 
 
 void usage(void)
 {
-  printf("Usage: ssid-logger -i INTERFACE\n");
+  printf("Usage: ssid-logger -i IFACE [-f csv|sqlite3] [-o FILENAME]\n");
 }
 
 int main(int argc, char *argv[])
 {
   char *iface = NULL;
+  char *option_file_format = NULL;
+  char *option_file_name = NULL;
+  char *file_name = NULL;
   int opt;
-  while ((opt = getopt(argc, argv, "i:h")) != -1) {
+
+  while ((opt = getopt(argc, argv, "f:hi:o:")) != -1) {
     switch (opt) {
-    case 'i':
-      iface = optarg;
+    case 'f':
+      option_file_format = optarg;
       break;
     case 'h':
       usage();
+      break;
+    case 'i':
+      iface = optarg;
+      break;
+    case 'o':
+      option_file_name = optarg;
       break;
     case '?':
       usage();
@@ -172,6 +186,31 @@ int main(int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
   //printf("The device you entered: %s\n", iface);
+  if (option_file_format) {
+    if (strcmp(option_file_format, "csv") == 0) {
+      format_csv = true;
+    } else if (strcmp(option_file_format, "sqlite3") == 0) {
+      format_csv = false;
+    } else {
+      fprintf(stderr, "Error: unrecognised format (not csv nor sqlite3)");
+      exit(EXIT_FAILURE);
+    }
+  }
+  if (option_file_name == NULL) {
+    if (format_csv) {
+      time_t now = time(NULL);
+      char timestamp[16];
+      strftime(timestamp, 16, "%Y%m%dT%H%M%S", gmtime(&now));
+      file_name = malloc(20 * sizeof(char));
+      snprintf(file_name, 20, "%s.csv", timestamp);
+    } else {
+      file_name = malloc((strlen(DB_NAME)+1)*sizeof(char));
+      file_name = strncpy(file_name, DB_NAME, strlen(DB_NAME) +1);
+    }
+  } else {
+    file_name = malloc(strlen(option_file_name) + 1);
+    strncpy(file_name, option_file_name, strlen(option_file_name)+1);
+  }
 
   char errbuf[PCAP_ERRBUF_SIZE];
 
@@ -261,8 +300,18 @@ int main(int argc, char *argv[])
 
   clock_gettime(CLOCK_MONOTONIC, &start_ts);
 
-  init_beacon_db(DB_NAME, &db);
-  begin_txn(db);
+  if (format_csv) {
+    file_ptr = fopen(file_name, "a");
+    fprintf(file_ptr, "WigleWifi-1.4,appRelease=%s,model=ssid-logger,release=%s,"
+      "device=ssid-logger,display=ssid-logger,board=ssid-logger,brand=ssid-logger\n",
+      VERSION, VERSION);
+    fprintf(file_ptr, "MAC,SSID,AuthMode,FirstSeen,Channel,RSSI,"
+      "CurrentLatitude,CurrentLongitude,AltitudeMeters,"
+      "AccuracyMeters,Type\n");
+  } else {
+    init_beacon_db(file_name, &db);
+    begin_txn(db);
+  }
 
   pcap_loop(handle, -1, (pcap_handler) got_packet, NULL);
 
@@ -281,8 +330,13 @@ int main(int argc, char *argv[])
   }
   free(queue);
 
-  commit_txn(db);
-  sqlite3_close(db);
+  if (format_csv) {
+    fclose(file_ptr);
+  } else {
+    commit_txn(db);
+    sqlite3_close(db);
+  }
+  free(file_name);
 
   return (0);
 }

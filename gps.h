@@ -7,7 +7,8 @@ struct gps_loc {
   double lat;
   double lon;
   double alt;
-  struct timespec time;
+  struct timespec ctime;
+  struct timespec ftime;
 } gloc;
 
 void *retrieve_gps_data(void *arg);

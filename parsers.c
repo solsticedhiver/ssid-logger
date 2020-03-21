@@ -2,9 +2,13 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <time.h>
+#include <math.h>
 
 #include "radiotap_iter.h"
 #include "parsers.h"
+#include "gps.h"
+#include "worker.h"
 
 void free_cipher_suite(struct cipher_suite *cs)
 {
@@ -116,7 +120,6 @@ char *authmode_from_crypto(struct cipher_suite *rsn,
                            struct cipher_suite *msw, bool ess,
                            bool privacy, bool wps)
 {
-
   // TODO: rewrite this so that there is safeguard not to overflow authmode string
   char authmode[1024];
   authmode[0] = '\0';           // this is needed for strcat to work
@@ -189,4 +192,35 @@ char *authmode_from_crypto(struct cipher_suite *rsn,
   char *tmp = malloc((strlen(authmode) + 1) * sizeof(char));
   strcpy(tmp, authmode);        // TODO: use safer copy function
   return tmp;
+}
+
+char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
+{
+  char tmp[1024], tail[128], firstseen[21];
+  char *authmode, *ap_str;
+
+  authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
+  strftime(firstseen, 20, "%Y-%m-%d %H:%M:%S", gmtime(&gloc.ftime.tv_sec));
+  sprintf(tail, "%d,%d,%-2.6f,%-2.6f,%-2.6f,0,WIFI", ap.channel, ap.rssi, gloc.lat, gloc.lon, isnan(gloc.alt) ? 0.000000 : gloc.alt);
+
+  tmp[0] = '\0';
+  strcat(tmp, ap.bssid);
+  strcat(tmp, ",");
+  strcat(tmp, ap.ssid);
+  strcat(tmp, ",");
+  strcat(tmp, authmode);
+  strcat(tmp, ",");
+  strcat(tmp, firstseen);
+  strcat(tmp, ",");
+  strcat(tmp, tail);
+
+  ap_str = malloc(strlen(tmp)+1);
+  strncpy(ap_str, tmp, strlen(tmp)+1);
+
+  free(authmode);
+
+  return ap_str;
+
+//MAC,SSID,AuthMode,FirstSeen,Channel,RSSI,CurrentLatitude,CurrentLongitude,AltitudeMeters,AccuracyMeters,Type
+//A4:3E:51:XX:XX:XX,Livebox-XXXX,[WPA-PSK-CCMP+TKIP] [WPA2-PSK-CCMP+TKIP][ESS],2020-02-15 17:52:51,6,-78,50.0000000000,-3.0000000000,19.308001,0,WIFI
 }
