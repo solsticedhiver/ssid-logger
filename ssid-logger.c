@@ -262,6 +262,7 @@ int main(int argc, char *argv[])
   clock_gettime(CLOCK_MONOTONIC, &start_ts);
 
   init_beacon_db(DB_NAME, &db);
+  begin_txn(db);
 
   pcap_loop(handle, -1, (pcap_handler) got_packet, NULL);
 
@@ -280,6 +281,7 @@ int main(int argc, char *argv[])
   }
   free(queue);
 
+  commit_txn(db);
   sqlite3_close(db);
 
   return (0);

@@ -8,6 +8,7 @@ worker thread that will process the queue filled by got_packet()
 #include <stdio.h>
 #include <assert.h>
 #include <sqlite3.h>
+#include <time.h>
 
 #include "parsers.h"
 #include "queue.h"
@@ -23,6 +24,7 @@ pthread_mutex_t lock_gloc;
 extern queue_t *queue;
 struct gps_loc gloc;            // global variable to hold retrieved gps data
 sqlite3 *db;
+struct timespec start_ts_cache;
 
 void free_ap_info(struct ap_info *ap)
 {
@@ -54,6 +56,7 @@ void *process_queue(void *args)
   struct ap_info *ap;
   struct ap_info **aps;
   int qs;
+  struct timespec now;
 
   while (1) {
     pthread_mutex_lock(&lock_queue);
@@ -73,9 +76,16 @@ void *process_queue(void *args)
       ap = aps[j];
       pthread_mutex_lock(&lock_gloc);
       if (gloc.lat && gloc.lon) {
-        insert_beacon(*ap, gloc, db); // TODO: we need to use a cache to avoid writing to disk every second
+        insert_beacon(*ap, gloc, db);
       }
       pthread_mutex_unlock(&lock_gloc);
+    }
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    if (now.tv_sec - start_ts_cache.tv_sec >= DB_CACHE_TIME) {
+      // commit to db
+      commit_txn(db);
+      begin_txn(db);
+      start_ts_cache = now;
     }
     for (int j = 0; j < qs; j++) {
       ap = aps[j];

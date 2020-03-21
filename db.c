@@ -194,3 +194,33 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db)
 
   return 0;
 }
+
+int begin_txn(sqlite3 *db)
+{
+  int ret;
+  char sql[32];
+
+  snprintf(sql, 32, "begin transaction;");
+  if((ret = sqlite3_exec(db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    sqlite3_close(db);
+    return ret * -1;
+  }
+
+  return 0;
+}
+
+int commit_txn(sqlite3 *db)
+{
+  int ret;
+  char sql[32];
+
+  snprintf(sql, 32, "commit transaction;");
+  if((ret = sqlite3_exec(db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    sqlite3_close(db);
+    return ret * -1;
+  }
+
+  return 0;
+}
