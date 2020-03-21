@@ -320,6 +320,9 @@ int main(int argc, char *argv[])
   pthread_cancel(hopper);
   pthread_cancel(worker);
   pthread_cancel(gps);
+  pthread_mutex_destroy(&lock_queue);
+  pthread_mutex_destroy(&lock_gloc);
+  pthread_cond_destroy(&cv);
 
   // free up elements of the queue
   int qs = queue->size;
