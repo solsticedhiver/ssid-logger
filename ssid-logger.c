@@ -146,6 +146,9 @@ void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char * 
 void usage(void)
 {
   printf("Usage: ssid-logger -i IFACE [-f csv|sqlite3] [-o FILENAME]\n");
+  printf("  -i IFACE        interface to use\n"
+         "  -f csv|sqlite3  output format to use (default sqlite3)\n"
+         "  -o FILENAME     explicitly set the output filename\n");
 }
 
 int main(int argc, char *argv[])
@@ -163,6 +166,7 @@ int main(int argc, char *argv[])
       break;
     case 'h':
       usage();
+      exit(EXIT_SUCCESS);
       break;
     case 'i':
       iface = optarg;
