@@ -10,6 +10,9 @@
 #include "gps.h"
 #include "worker.h"
 
+//static const char *CIPHER_SUITE_SELECTORS[] =
+//    { "Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP" };
+
 void free_cipher_suite(struct cipher_suite *cs)
 {
   if (cs == NULL)
@@ -56,8 +59,7 @@ struct cipher_suite *parse_cipher_suite(u_char * start)
   return cs;
 }
 
-int8_t parse_radiotap_header(const u_char * packet, uint16_t * freq,
-                             int8_t * rssi)
+int8_t parse_radiotap_header(const u_char * packet, uint16_t * freq, int8_t * rssi)
 {
   // parse radiotap header to get frequency and rssi
   // returns radiotap header size or -1 on error
@@ -66,7 +68,7 @@ int8_t parse_radiotap_header(const u_char * packet, uint16_t * freq,
   int8_t offset = (int8_t) rtaphdr->it_len;
 
   struct ieee80211_radiotap_iterator iter;
-  uint16_t flags = 0;
+  //uint16_t flags = 0;
   int8_t r;
 
   static const struct radiotap_align_size align_size_000000_00[] = {
@@ -116,81 +118,98 @@ int8_t parse_radiotap_header(const u_char * packet, uint16_t * freq,
   return offset;
 }
 
-char *authmode_from_crypto(struct cipher_suite *rsn,
-                           struct cipher_suite *msw, bool ess,
-                           bool privacy, bool wps)
+char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
+                            bool ess, bool privacy, bool wps)
 {
   // TODO: rewrite this so that there is safeguard not to overflow authmode string
   char authmode[1024];
   authmode[0] = '\0';           // this is needed for strcat to work
   uint8_t last_byte;
+  size_t length = 1024;
 
   if (msw != NULL) {
-    strcat(authmode, "[WPA-");
+    strncat(authmode, "[WPA-", length);
+    length -= 5;
     last_byte = (uint8_t) msw->akm_cipher_suite[0][3];
     switch (last_byte) {
     case 1:
-      strcat(authmode, "EAP-");
+      strncat(authmode, "EAP-", length);
+      length -= 4;
       break;
     case 2:
-      strcat(authmode, "PSK-");
+      strncat(authmode, "PSK-", length);
+      length -= 4;
       break;
     }
     for (int i = 0; i < msw->pairwise_cipher_count; i++) {
       last_byte = (uint8_t) msw->pairwise_cipher_suite[i][3];
       switch (last_byte) {
       case 2:
-        strcat(authmode, "+TKIP");
+        strncat(authmode, "+TKIP", length);
+        length -= 5;
         break;
       case 4:
-        strcat(authmode, "CCMP");
+        strncat(authmode, "CCMP", length);
+        length -= 4;
         break;
       case 1:
-        strcat(authmode, "+WEP-40");
+        strncat(authmode, "+WEP-40", length);
+        length -= 7;
         break;
       case 5:
-        strcat(authmode, "+WEP-104");
+        strncat(authmode, "+WEP-104", length);
+        length -= 8;
         break;
       }
     }
-    strcat(authmode, "]");
+    strncat(authmode, "]", length);
+    length -= 1;
   }
   if (rsn != NULL) {
-    strcat(authmode, "[WPA2-");
+    strncat(authmode, "[WPA2-", length);
+    length -= 6;
     last_byte = (uint8_t) rsn->akm_cipher_suite[0][3];
     switch (last_byte) {
     case 1:
-      strcat(authmode, "EAP-");
+      strncat(authmode, "EAP-", length);
+      length -= 4;
       break;
     case 2:
-      strcat(authmode, "PSK-");
+      strncat(authmode, "PSK-", length);
+      length -= 4;
       break;
     }
     for (int i = 0; i < rsn->pairwise_cipher_count; i++) {
       last_byte = (uint8_t) rsn->pairwise_cipher_suite[i][3];
       switch (last_byte) {
       case 2:
-        strcat(authmode, "+TKIP");
+        strncat(authmode, "+TKIP", length);
+        length -= 5;
         break;
       case 4:
-        strcat(authmode, "CCMP");
+        strncat(authmode, "CCMP", length);
+        length -= 4;
         break;
       }
     }
-    strcat(authmode, "]");
+    strncat(authmode, "]", length);
+    length -= 1;
   }
   if (!rsn && !msw && privacy) {
-    strcat(authmode, "[WEP]");
+    strncat(authmode, "[WEP]", length);
+    length -= 5;
   }
   if (wps) {
-    strcat(authmode, "[WPS]");
+    strncat(authmode, "[WPS]", length);
+    length -= 5;
   }
   if (ess) {
-    strcat(authmode, "[ESS]");
+    strncat(authmode, "[ESS]", length);
+    length -= 5;
   }
 
   char *tmp = malloc((strlen(authmode) + 1) * sizeof(char));
-  strcpy(tmp, authmode);        // TODO: use safer copy function
+  strncpy(tmp, authmode, strlen(authmode) + 1);
   return tmp;
 }
 

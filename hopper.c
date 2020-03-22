@@ -40,7 +40,7 @@ void *hop_channel(void *arg)
     NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, freq);
 
     // finally send it and receive the amount of bytes sent
-    int ret = nl_send_auto(sckt, msg);
+    /*int ret =*/ nl_send_auto(sckt, msg);
     //printf("%d bytes sent\n", ret);
 
     nlmsg_free(msg);

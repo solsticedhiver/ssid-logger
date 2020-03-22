@@ -26,10 +26,10 @@ void cleanup_gps_data(void *arg)
 void *retrieve_gps_data(void *arg)
 {
   struct gps_data_t gps_data;
-  pthread_mutex_t lock_gloc;
+  pthread_mutex_t mutex_gloc;
 
   if (gps_open("localhost", "2947", &gps_data) == -1) {
-    fprintf(stderr, "Error %d: %s\n", errno, gps_errstr(errno));
+    fprintf(stderr, "Error: %s\n", gps_errstr(errno));
     return NULL;
   }
   gps_stream(&gps_data, WATCH_ENABLE | WATCH_JSON, NULL);
@@ -37,7 +37,7 @@ void *retrieve_gps_data(void *arg)
   // push clean up code when thread is cancelled
   pthread_cleanup_push(cleanup_gps_data, (void *) (&gps_data));
 
-  pthread_mutex_init(&lock_gloc, NULL);
+  pthread_mutex_init(&mutex_gloc, NULL);
 
   while (1) {
     // wait at most for 1 second to receive data
@@ -48,7 +48,7 @@ void *retrieve_gps_data(void *arg)
                 || gps_data.fix.mode == MODE_3D)
             && !isnan(gps_data.fix.latitude)
             && !isnan(gps_data.fix.longitude)) {
-          pthread_mutex_lock(&lock_gloc);
+          pthread_mutex_lock(&mutex_gloc);
           // update global gloc gps location
           gloc.lat = gps_data.fix.latitude;
           gloc.lon = gps_data.fix.longitude;
@@ -58,7 +58,7 @@ void *retrieve_gps_data(void *arg)
           // the system clock and the gps time are not in sync
           // gloc.ctime is only used for relative timing
           clock_gettime(CLOCK_MONOTONIC, &gloc.ctime);
-          pthread_mutex_unlock(&lock_gloc);
+          pthread_mutex_unlock(&mutex_gloc);
         }
       }
     }

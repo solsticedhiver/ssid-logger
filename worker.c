@@ -21,8 +21,8 @@ worker thread that will process the queue filled by got_packet()
 static const char HIDDEN_SSID[] = "***";
 
 pthread_cond_t cv;
-pthread_mutex_t lock_queue;
-pthread_mutex_t lock_gloc;
+pthread_mutex_t mutex_queue;
+pthread_mutex_t mutex_gloc;
 extern queue_t *queue;
 struct gps_loc gloc;            // global variable to hold retrieved gps data
 sqlite3 *db;
@@ -55,16 +55,16 @@ void print_ssid_info(struct ap_info *ap)
 
 void *process_queue(void *args)
 {
-  pthread_mutex_init(&lock_queue, NULL);
-  pthread_mutex_init(&lock_gloc, NULL);
+  pthread_mutex_init(&mutex_queue, NULL);
+  pthread_mutex_init(&mutex_gloc, NULL);
   struct ap_info *ap;
   struct ap_info **aps;
   int qs;
   struct timespec now;
 
   while (1) {
-    pthread_mutex_lock(&lock_queue);
-    pthread_cond_wait(&cv, &lock_queue);
+    pthread_mutex_lock(&mutex_queue);
+    pthread_cond_wait(&cv, &mutex_queue);
 
     qs = queue->size;
     aps = malloc(sizeof(struct ap_info *) * qs);
@@ -73,12 +73,12 @@ void *process_queue(void *args)
       aps[i] = (struct ap_info *) dequeue(queue);
     }
     assert(queue->size == 0);
-    pthread_mutex_unlock(&lock_queue);
+    pthread_mutex_unlock(&mutex_queue);
 
     // process the array after having unlock the queue
     for (int j = 0; j < qs; j++) {
       ap = aps[j];
-      pthread_mutex_lock(&lock_gloc);
+      pthread_mutex_lock(&mutex_gloc);
       if (gloc.lat && gloc.lon) {
         if (!format_csv) {
           insert_beacon(*ap, gloc, db);
@@ -88,7 +88,7 @@ void *process_queue(void *args)
           free(tmp);
         }
       }
-      pthread_mutex_unlock(&lock_gloc);
+      pthread_mutex_unlock(&mutex_gloc);
     }
     clock_gettime(CLOCK_MONOTONIC, &now);
     if (now.tv_sec - start_ts_cache.tv_sec >= DB_CACHE_TIME) {

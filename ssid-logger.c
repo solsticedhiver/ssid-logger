@@ -19,7 +19,9 @@
 #include "gps.h"
 #include "db.h"
 
+#define NAME "ssid-logger"
 #define VERSION "0.1"
+
 #define SNAP_LEN 512
 #define CSS_OUI "\000\017\254"  // 0x000x0F0xAC or 00-0F-AC
 #define MS_OUI "\000\120\362"   // 0x000x500xF2 or 00-50-F2
@@ -29,19 +31,16 @@
 
 #define DB_NAME "beacon.db"
 
-static const char *CIPHER_SUITE_SELECTORS[] =
-    { "Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP" };
-
 pcap_t *handle;                 // global, to use it in sigint_handler
 queue_t *queue;                 // queue to hold parsed ap infos
 
 pthread_t hopper;
 pthread_t worker;
 pthread_t gps;
-pthread_mutex_t lock_queue;
-pthread_mutex_t lock_gloc;
+pthread_mutex_t mutex_queue;
+pthread_mutex_t mutex_gloc;
 pthread_cond_t cv;
-struct timespec start_ts;
+struct timespec start_ts_queue;
 
 sqlite3 *db = NULL;
 bool format_csv = false;
@@ -82,7 +81,7 @@ void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char * 
   u_char *ie = (u_char *) ci_addr + 2;
   uint8_t ie_len = *(ie + 1);
   uint8_t channel = 0, ssid_len = 0;
-  bool wps = false, utf8_ssid = false;
+  bool wps = false/*, utf8_ssid = false*/;
 
   struct cipher_suite *rsn = NULL;
   struct cipher_suite *msw = NULL;
@@ -103,7 +102,7 @@ void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char * 
         break;
       case 127:                // Extended Capabilities IE
         if (ie_len >= 7) {
-          utf8_ssid = (bool) (*(ie + 1 + 7) & 0x01);
+          //utf8_ssid = (bool) (*(ie + 1 + 7) & 0x01);
         }
         break;
       case 221:
@@ -132,17 +131,16 @@ void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char * 
   ap->privacy = privacy;
   ap->wps = wps;
 
-  pthread_mutex_lock(&lock_queue);
+  pthread_mutex_lock(&mutex_queue);
   enqueue(queue, ap);
   struct timespec now;
   clock_gettime(CLOCK_MONOTONIC, &now);
-  if (queue->size == MAX_QUEUE_SIZE / 2
-      || now.tv_sec - start_ts.tv_sec >= 1) {
-    start_ts = now;
+  if (queue->size == MAX_QUEUE_SIZE / 2 || now.tv_sec - start_ts_queue.tv_sec >= 1) {
+    start_ts_queue = now;
     // the queue is half full or it's been more than a second; waking up the worker thread to process that
     pthread_cond_signal(&cv);
   }
-  pthread_mutex_unlock(&lock_queue);
+  pthread_mutex_unlock(&mutex_queue);
 }
 
 void usage(void)
@@ -158,7 +156,7 @@ int main(int argc, char *argv[])
   char *file_name = NULL;
   int opt;
 
-  while ((opt = getopt(argc, argv, "f:hi:o:")) != -1) {
+  while ((opt = getopt(argc, argv, "f:hi:o:V")) != -1) {
     switch (opt) {
     case 'f':
       option_file_format = optarg;
@@ -171,6 +169,10 @@ int main(int argc, char *argv[])
       break;
     case 'o':
       option_file_name = optarg;
+      break;
+    case 'V':
+      printf("%s %s\nCopyright © 2020 solsTice d'Hiver\nLicense GPLv3+: GNU GPL version 3\n", NAME, VERSION);
+      exit(EXIT_SUCCESS);
       break;
     case '?':
       usage();
@@ -278,7 +280,7 @@ int main(int argc, char *argv[])
   }
 
   pthread_cond_init(&cv, NULL);
-  pthread_mutex_init(&lock_queue, NULL);
+  pthread_mutex_init(&mutex_queue, NULL);
   queue = new_queue(MAX_QUEUE_SIZE);
   // start the helper worker thread
   if (pthread_create(&worker, NULL, process_queue, NULL)) {
@@ -286,7 +288,7 @@ int main(int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
 
-  pthread_mutex_init(&lock_gloc, NULL);
+  pthread_mutex_init(&mutex_gloc, NULL);
   // start the helper worker thread
   if (pthread_create(&gps, NULL, retrieve_gps_data, NULL)) {
     fprintf(stderr, "Error creating gps thread\n");
@@ -298,7 +300,7 @@ int main(int argc, char *argv[])
   act.sa_handler = sigint_handler;
   sigaction(SIGINT, &act, NULL);
 
-  clock_gettime(CLOCK_MONOTONIC, &start_ts);
+  clock_gettime(CLOCK_MONOTONIC, &start_ts_queue);
 
   if (format_csv) {
     file_ptr = fopen(file_name, "a");
@@ -323,8 +325,8 @@ int main(int argc, char *argv[])
   pthread_cancel(hopper);
   pthread_cancel(worker);
   pthread_cancel(gps);
-  pthread_mutex_destroy(&lock_queue);
-  pthread_mutex_destroy(&lock_gloc);
+  pthread_mutex_destroy(&mutex_queue);
+  pthread_mutex_destroy(&mutex_gloc);
   pthread_cond_destroy(&cv);
 
   // free up elements of the queue
