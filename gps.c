@@ -12,6 +12,8 @@ helper thread that repeatedly retrieve gps coord. from the gpsd daemon
 
 #include "gps.h"
 
+int gps_thread_result;
+
 void cleanup_gps_data(void *arg)
 {
   struct gps_data_t *gps_data;
@@ -27,9 +29,17 @@ void *retrieve_gps_data(void *arg)
 {
   struct gps_data_t gps_data;
   pthread_mutex_t mutex_gloc;
+  bool *option_gps;
+
+  option_gps = (bool *)arg;
+  if (!*option_gps) {
+    gps_thread_result = 1;
+    return NULL;
+  }
 
   if (gps_open("localhost", "2947", &gps_data) == -1) {
-    fprintf(stderr, "Error: %s\n", gps_errstr(errno));
+    fprintf(stderr, "Error(gpsd): %s\n", gps_errstr(errno));
+    gps_thread_result = 2;
     return NULL;
   }
   gps_stream(&gps_data, WATCH_ENABLE | WATCH_JSON, NULL);

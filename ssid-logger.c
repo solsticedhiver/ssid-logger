@@ -37,6 +37,7 @@ queue_t *queue;                 // queue to hold parsed ap infos
 pthread_t hopper;
 pthread_t worker;
 pthread_t gps;
+int gps_thread_result = 0;
 pthread_mutex_t mutex_queue;
 pthread_mutex_t mutex_gloc;
 pthread_cond_t cv;
@@ -44,6 +45,7 @@ struct timespec start_ts_queue;
 
 sqlite3 *db = NULL;
 bool format_csv = false;
+bool option_gps = true;
 FILE *file_ptr = NULL;
 
 void sigint_handler(int s)
@@ -159,7 +161,7 @@ int main(int argc, char *argv[])
   char *file_name = NULL;
   int opt;
 
-  while ((opt = getopt(argc, argv, "f:hi:o:V")) != -1) {
+  while ((opt = getopt(argc, argv, "f:hi:no:V")) != -1) {
     switch (opt) {
     case 'f':
       option_file_format = optarg;
@@ -170,6 +172,9 @@ int main(int argc, char *argv[])
       break;
     case 'i':
       iface = optarg;
+      break;
+    case 'n':
+      option_gps = false;
       break;
     case 'o':
       option_file_name = optarg;
@@ -216,6 +221,10 @@ int main(int argc, char *argv[])
   } else {
     file_name = malloc(strlen(option_file_name) + 1);
     strncpy(file_name, option_file_name, strlen(option_file_name)+1);
+  }
+
+  if (!option_gps) {
+    printf("Warning: you have disabled the use of gpsd. All the GPS coordinates will be 0.0. Please don't upload such a file to wigle.net\n");
   }
 
   char errbuf[PCAP_ERRBUF_SIZE];
@@ -293,9 +302,18 @@ int main(int argc, char *argv[])
   }
 
   pthread_mutex_init(&mutex_gloc, NULL);
-  // start the helper worker thread
-  if (pthread_create(&gps, NULL, retrieve_gps_data, NULL)) {
+  // start the helper gps thread
+  if (pthread_create(&gps, NULL, retrieve_gps_data, &option_gps)) {
     fprintf(stderr, "Error creating gps thread\n");
+    exit(EXIT_FAILURE);
+  }
+  sleep(1); // oh my. just wait for gps thread to return
+  if (gps_thread_result == 2) {
+    pthread_cancel(hopper);
+    pthread_cancel(worker);
+    pthread_mutex_destroy(&mutex_queue);
+    pthread_mutex_destroy(&mutex_gloc);
+    pthread_cond_destroy(&cv);
     exit(EXIT_FAILURE);
   }
 
