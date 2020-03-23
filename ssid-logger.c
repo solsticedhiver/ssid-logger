@@ -40,7 +40,9 @@ pthread_t gps;
 int gps_thread_result = 0;
 pthread_mutex_t mutex_queue;
 pthread_mutex_t mutex_gloc;
+pthread_mutex_t mutex_gtr;
 pthread_cond_t cv;
+pthread_cond_t cv_gtr;
 struct timespec start_ts_queue;
 
 sqlite3 *db = NULL;
@@ -307,15 +309,23 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Error creating gps thread\n");
     exit(EXIT_FAILURE);
   }
-  sleep(1); // oh my. just wait for gps thread to return
+  // this is a little over-kill but is there a better way ?
+  pthread_mutex_init(&mutex_gtr, NULL);
+  pthread_mutex_lock(&mutex_gtr);
+  pthread_cond_wait(&cv_gtr, &mutex_gtr);
   if (gps_thread_result == 2) {
+    // gps thread can't find gpsd
     pthread_cancel(hopper);
     pthread_cancel(worker);
     pthread_mutex_destroy(&mutex_queue);
     pthread_mutex_destroy(&mutex_gloc);
+    pthread_mutex_destroy(&mutex_gtr);
     pthread_cond_destroy(&cv);
+    pthread_cond_destroy(&cv_gtr);
+    free(file_name);
     exit(EXIT_FAILURE);
   }
+  pthread_mutex_unlock(&mutex_gtr);
 
   // catch CTRL+C to break loop cleanly
   struct sigaction act;
@@ -349,7 +359,9 @@ int main(int argc, char *argv[])
   pthread_cancel(gps);
   pthread_mutex_destroy(&mutex_queue);
   pthread_mutex_destroy(&mutex_gloc);
+  pthread_mutex_destroy(&mutex_gtr);
   pthread_cond_destroy(&cv);
+  pthread_cond_destroy(&cv_gtr);
 
   // free up elements of the queue
   int qs = queue->size;
