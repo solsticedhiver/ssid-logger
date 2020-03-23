@@ -42,7 +42,11 @@ void *retrieve_gps_data(void *arg)
   while (1) {
     // wait at most for 1 second to receive data
     if (gps_waiting(&gps_data, 1000000)) {
+      #if GPS_VERSION == 1
       if (gps_read(&gps_data, NULL, 0) > 0) {
+      #else
+      if (gps_read(&gps_data) > 0) {
+      #endif
         if (gps_data.set && (gps_data.status == STATUS_FIX)
             && (gps_data.fix.mode == MODE_2D
                 || gps_data.fix.mode == MODE_3D)
@@ -52,8 +56,13 @@ void *retrieve_gps_data(void *arg)
           // update global gloc gps location
           gloc.lat = gps_data.fix.latitude;
           gloc.lon = gps_data.fix.longitude;
+          #if GPS_VERSION == 1
           gloc.alt = gps_data.fix.altHAE;
           gloc.ftime = gps_data.fix.time;
+          #else
+          gloc.alt = gps_data.fix.altitude;
+          gloc.ftime.tv_sec = (time_t)gps_data.fix.time;
+          #endif
           // we use the system clock to avoid problem if
           // the system clock and the gps time are not in sync
           // gloc.ctime is only used for relative timing

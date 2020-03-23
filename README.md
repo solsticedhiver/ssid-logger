@@ -44,6 +44,8 @@ On Ubuntu 18.04, one needs to run the following command to install libraries and
 
     sudo apt install pkg-config libpcap0.8 libpcap0.8-dev libnl-3-200 libnl-3-dev libnl-genl-3-200 libnl-genl-3-dev gpsd libgps23 libgps-dev libsqlite3-dev libsqlite3-0 meson ninja-build
 
+You will need meson >= 0.49. Try `pip3 install meson` and run it with `~/.local/bin/meson`
+
 On archlinux-arm, this is (libnl is already installed):
 
     sudo pacman -S libpcap gpsd sqlite3 meson ninja
