@@ -10,7 +10,6 @@ helper thread that repeatedly retrieve gps coord. from the gpsd daemon
 #include <stdbool.h>
 #include <pthread.h>
 #include <time.h>
-#include <math.h>
 
 #include "gps_thread.h"
 
@@ -82,17 +81,22 @@ void *retrieve_gps_data(void *arg)
           gloc.lat = gps_data.fix.latitude;
           gloc.lon = gps_data.fix.longitude;
           #if GPS_VERSION == 1
-          gloc.alt = isnan(gps_data.fix.altHAE) ? 0.0 : gps_data.fix.altHAE;
+          gloc.alt = isnan(gps_data.fix.altMSL) ? 0.0 : gps_data.fix.altMSL;
           gloc.ftime = gps_data.fix.time;
-          #else
-          gloc.alt = isnan(gps_data.fix.altitude) ? 0.0 : gps_data.fix.altitude;
-          gloc.ftime.tv_sec = (time_t)gps_data.fix.time;
-          #endif
-          if (!isnan(gps_data.fix.epx) && !isnan(gps_data.fix.epy)) {
-            gloc.acc = sqrt(gps_data.fix.epx*gps_data.fix.epx+gps_data.fix.epy*gps_data.fix.epy);
+          if (!isnan(gps_data.fix.eph)) {
+            gloc.acc = gps_data.fix.eph;
           } else {
             gloc.acc = 0.0;
           }
+          #else
+          gloc.alt = isnan(gps_data.fix.altitude) ? 0.0 : gps_data.fix.altitude;
+          gloc.ftime.tv_sec = (time_t)gps_data.fix.time;
+          if (!isnan(gps_data.fix.epx) && !isnan(gps_data.fix.epy)) {
+            gloc.acc = (gps_data.fix.epx + gps_data.fix.epy)/2;
+          } else {
+            gloc.acc = 0.0;
+          }
+          #endif
           // we use the system clock to avoid problem if
           // the system clock and the gps time are not in sync
           // gloc.ctime is only used for relative timing

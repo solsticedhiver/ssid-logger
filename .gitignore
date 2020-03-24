@@ -2,3 +2,4 @@ archive/
 build/
 beacon.db
 *.nmea
+*.csv
