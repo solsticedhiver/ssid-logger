@@ -1,4 +1,4 @@
-project('ssid-logger', 'c')
+project('ssid-logger', 'c', version:'0.1.1')
 cc = meson.get_compiler('c')
 
 src = [ 'ssid-logger.c', 'hopper_thread.c', 'parsers.c', 'queue.c', 'radiotap.c', 'worker_thread.c', 'gps_thread.c', 'db.c']
