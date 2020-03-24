@@ -4,8 +4,8 @@
 #include <string.h>
 #include <math.h>
 
-#include "worker.h"
-#include "gps.h"
+#include "worker_thread.h"
+#include "gps_thread.h"
 #include "parsers.h"
 
 int do_nothing(void *not_used, int argc, char **argv, char **col_name)

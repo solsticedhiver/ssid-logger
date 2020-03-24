@@ -7,8 +7,8 @@
 
 #include "radiotap_iter.h"
 #include "parsers.h"
-#include "gps.h"
-#include "worker.h"
+#include "gps_thread.h"
+#include "worker_thread.h"
 
 //static const char *CIPHER_SUITE_SELECTORS[] =
 //    { "Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP" };

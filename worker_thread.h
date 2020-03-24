@@ -1,5 +1,5 @@
-#ifndef WORKER_H
-#define WORKER_H
+#ifndef WORKER_THREAD_H
+#define WORKER_THREAD_H
 
 #include <ctype.h>
 #include <stdbool.h>

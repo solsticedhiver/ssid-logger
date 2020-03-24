@@ -14,8 +14,8 @@ worker thread that will process the queue filled by got_packet()
 
 #include "parsers.h"
 #include "queue.h"
-#include "worker.h"
-#include "gps.h"
+#include "worker_thread.h"
+#include "gps_thread.h"
 #include "db.h"
 
 static const char HIDDEN_SSID[] = "***";

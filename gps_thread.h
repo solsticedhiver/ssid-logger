@@ -1,5 +1,5 @@
-#ifndef GPS_H
-#define GPS_H
+#ifndef GPS_THREAD_H
+#define GPS_THREAD_H
 
 #include <time.h>
 

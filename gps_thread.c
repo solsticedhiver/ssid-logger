@@ -7,11 +7,12 @@ helper thread that repeatedly retrieve gps coord. from the gpsd daemon
 #include <math.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <time.h>
 #include <math.h>
 
-#include "gps.h"
+#include "gps_thread.h"
 
 int gps_thread_result;
 pthread_mutex_t mutex_gtr;

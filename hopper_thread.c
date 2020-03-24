@@ -11,7 +11,7 @@ following the predefined pattern set in CHANNELS
 #include <unistd.h>
 #include <pthread.h>
 
-#include "hopper.h"
+#include "hopper_thread.h"
 
 void *hop_channel(void *arg)
 {

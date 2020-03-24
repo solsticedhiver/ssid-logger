@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "gps.h"
-#include "worker.h"
+#include "gps_thread.h"
+#include "worker_thread.h"
 
 struct cipher_suite {
   u_char group_cipher_suite[4];

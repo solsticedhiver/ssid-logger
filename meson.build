@@ -1,7 +1,7 @@
 project('ssid-logger', 'c')
 cc = meson.get_compiler('c')
 
-src = [ 'ssid-logger.c', 'hopper.c', 'parsers.c', 'queue.c', 'radiotap.c', 'worker.c', 'gps.c', 'db.c']
+src = [ 'ssid-logger.c', 'hopper_thread.c', 'parsers.c', 'queue.c', 'radiotap.c', 'worker_thread.c', 'gps_thread.c', 'db.c']
 pcap_dep= dependency('pcap')
 pthread_dep = dependency('threads')
 nl_dep = dependency('libnl-3.0')
@@ -18,7 +18,4 @@ endif
 
 executable('ssid-logger', src,
   dependencies: [pcap_dep, pthread_dep, nl_dep, genl_dep, gps_dep, sqlite3_dep, math_dep],
-  install: true,
-  kwargs: {'implicit_include_directories': false}) # this is needed otherwise the local gps.h is used instead of the one in /usr/include
-
-# Note: using implicit_include_directories=false is playing with fire !
+  install: true)

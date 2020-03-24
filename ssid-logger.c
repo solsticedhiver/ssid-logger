@@ -13,10 +13,10 @@
 #include <time.h>
 
 #include "queue.h"
-#include "hopper.h"
+#include "hopper_thread.h"
 #include "parsers.h"
-#include "worker.h"
-#include "gps.h"
+#include "worker_thread.h"
+#include "gps_thread.h"
 #include "db.h"
 
 #define NAME "ssid-logger"

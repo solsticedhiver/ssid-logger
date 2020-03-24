@@ -1,7 +1,8 @@
-#ifndef HOPPER_H
-#define HOPPER_H
+#ifndef HOPPER_THREAD_H
+#define HOPPER_THREAD_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #define HOP_PER_SECOND 3
 #define SLEEP_DURATION (1000/HOP_PER_SECOND)*100
