@@ -82,7 +82,7 @@ void *process_queue(void *args)
       pthread_mutex_lock(&mutex_gloc);
       if ((option_gps && gloc.lat && gloc.lon) || !option_gps) {
         if (!option_gps) {
-          gloc.lat = gloc.lon = gloc.alt = 0.0;
+          gloc.lat = gloc.lon = gloc.alt = gloc.acc = 0.0;
           // use system time because we can't use gps fix time
           clock_gettime(CLOCK_REALTIME, &gloc.ftime);
         }

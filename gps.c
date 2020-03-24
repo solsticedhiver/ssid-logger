@@ -9,6 +9,7 @@ helper thread that repeatedly retrieve gps coord. from the gpsd daemon
 #include <errno.h>
 #include <pthread.h>
 #include <time.h>
+#include <math.h>
 
 #include "gps.h"
 
@@ -80,12 +81,17 @@ void *retrieve_gps_data(void *arg)
           gloc.lat = gps_data.fix.latitude;
           gloc.lon = gps_data.fix.longitude;
           #if GPS_VERSION == 1
-          gloc.alt = gps_data.fix.altHAE;
+          gloc.alt = isnan(gps_data.fix.altHAE) ? 0.0 : gps_data.fix.altHAE;
           gloc.ftime = gps_data.fix.time;
           #else
-          gloc.alt = gps_data.fix.altitude;
+          gloc.alt = isnan(gps_data.fix.altitude) ? 0.0 : gps_data.fix.altitude;
           gloc.ftime.tv_sec = (time_t)gps_data.fix.time;
           #endif
+          if (!isnan(gps_data.fix.epx) && !isnan(gps_data.fix.epy)) {
+            gloc.acc = sqrt(gps_data.fix.epx*gps_data.fix.epx+gps_data.fix.epy*gps_data.fix.epy);
+          } else {
+            gloc.acc = 0.0;
+          }
           // we use the system clock to avoid problem if
           // the system clock and the gps time are not in sync
           // gloc.ctime is only used for relative timing

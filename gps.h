@@ -7,6 +7,7 @@ struct gps_loc {
   double lat;
   double lon;
   double alt;
+  double acc;
   struct timespec ctime;
   struct timespec ftime;
 } gloc;

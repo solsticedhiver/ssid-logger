@@ -29,7 +29,7 @@ def main():
     c.execute(sql)
     conn.commit()
 
-    sql = '''select ap.bssid, ap.ssid, authmode.mode, ts, channel, rssi, lat, lon, alt  from beacon
+    sql = '''select ap.bssid, ap.ssid, authmode.mode, ts, channel, rssi, lat, lon, alt, acc  from beacon
         inner join ap on ap.id=beacon.ap
         inner join authmode on authmode.id=beacon.authmode;'''
     c.execute(sql)
@@ -44,7 +44,8 @@ def main():
             tmp[6] = f'{row[6]:-2.6f}'
             tmp[7] = f'{row[7]:-2.6f}'
             tmp[8] = f'{row[8]:-2.6f}'
-            tmp.extend([0, 'WIFI'])
+            tmp[9] = f'{row[9]:-2.6f}'
+            tmp.append('WIFI')
             csvwriter.writerow(tmp)
 
     conn.close()

@@ -220,7 +220,8 @@ char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
 
   authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
   strftime(firstseen, 20, "%Y-%m-%d %H:%M:%S", gmtime(&gloc.ftime.tv_sec));
-  sprintf(tail, "%d,%d,%-2.6f,%-2.6f,%-2.6f,0,WIFI", ap.channel, ap.rssi, gloc.lat, gloc.lon, isnan(gloc.alt) ? 0.000000 : gloc.alt);
+  sprintf(tail, "%d,%d,%-2.6f,%-2.6f,%-2.6f,%-2.6f,WIFI", ap.channel, ap.rssi, gloc.lat,
+    gloc.lon, gloc.alt, gloc.acc);
 
   tmp[0] = '\0';
   strcat(tmp, ap.bssid);
