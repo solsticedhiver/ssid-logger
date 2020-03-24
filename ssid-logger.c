@@ -20,7 +20,7 @@
 #include "db.h"
 
 #define NAME "ssid-logger"
-#define VERSION "0.1.1"
+#define VERSION "0.1.2"
 
 #define SNAP_LEN 512
 #define CSS_OUI "\000\017\254"  // 0x000x0F0xAC or 00-0F-AC

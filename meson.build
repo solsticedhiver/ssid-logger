@@ -1,4 +1,4 @@
-project('ssid-logger', 'c', version:'0.1.1')
+project('ssid-logger', 'c', version:'0.1.2')
 
 src = [ 'ssid-logger.c', 'hopper_thread.c', 'parsers.c', 'queue.c', 'radiotap.c', 'worker_thread.c', 'gps_thread.c', 'db.c']
 pcap_dep= dependency('pcap')
