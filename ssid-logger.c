@@ -226,8 +226,8 @@ int main(int argc, char *argv[])
   }
 
   if (!option_gps) {
-    printf("Warning: you have disabled the use of gpsd. All the GPS coordinates will be 0.0.\n"
-      "<< Please don't upload such data to wigle.net >>\n");
+    printf("Warning: you have disabled the use of gpsd. All the GPS data will be 0.0.\n"
+      "<! Please don't upload such data file to wigle.net !>\n");
   }
 
   char errbuf[PCAP_ERRBUF_SIZE];

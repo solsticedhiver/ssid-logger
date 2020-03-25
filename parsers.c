@@ -208,9 +208,7 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
     length -= 5;
   }
 
-  char *tmp = malloc((strlen(authmode) + 1) * sizeof(char));
-  strncpy(tmp, authmode, strlen(authmode) + 1);
-  return tmp;
+  return strndup(authmode, 1024-length);
 }
 
 char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
