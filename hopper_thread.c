@@ -13,6 +13,14 @@ following the predefined pattern set in CHANNELS
 
 #include "hopper_thread.h"
 
+void cleanup_socket(void *arg){
+  struct nl_sock *sckt = (struct nl_sock *)arg;
+  nl_close(sckt);
+  nl_socket_free(sckt);
+
+  return;
+}
+
 void *hop_channel(void *arg)
 {
   // based on https://stackoverflow.com/a/53602395/283067
@@ -27,6 +35,9 @@ void *hop_channel(void *arg)
   genl_connect(sckt);
   int ctrl = genl_ctrl_resolve(sckt, "nl80211");
   enum nl80211_commands command = NL80211_CMD_SET_WIPHY;
+
+  // push clean up code when thread is cancelled
+  pthread_cleanup_push(cleanup_socket, (void *) sckt);
 
   while (1) {
     // Allocate a new message
@@ -62,6 +73,8 @@ void *hop_channel(void *arg)
     fflush(stderr);
     sleep(5);
   }
+
+  pthread_cleanup_pop(1);
 
   return NULL;
 }
