@@ -38,11 +38,11 @@ pthread_t hopper;
 pthread_t worker;
 pthread_t gps;
 int gps_thread_result = 0;
-pthread_mutex_t mutex_queue;
-pthread_mutex_t mutex_gloc;
-pthread_mutex_t mutex_gtr;
-pthread_cond_t cv;
-pthread_cond_t cv_gtr;
+pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_gloc = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_gtr = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cv_gtr = PTHREAD_COND_INITIALIZER;
 struct timespec start_ts_queue;
 
 sqlite3 *db = NULL;
@@ -295,8 +295,6 @@ int main(int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
 
-  pthread_cond_init(&cv, NULL);
-  pthread_mutex_init(&mutex_queue, NULL);
   queue = new_queue(MAX_QUEUE_SIZE);
   // start the helper worker thread
   if (pthread_create(&worker, NULL, process_queue, NULL)) {
@@ -304,14 +302,12 @@ int main(int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
 
-  pthread_mutex_init(&mutex_gloc, NULL);
   // start the helper gps thread
   if (pthread_create(&gps, NULL, retrieve_gps_data, &option_gps)) {
     fprintf(stderr, "Error creating gps thread\n");
     exit(EXIT_FAILURE);
   }
   // this is a little over-kill but is there a better way ?
-  pthread_mutex_init(&mutex_gtr, NULL);
   pthread_mutex_lock(&mutex_gtr);
   pthread_cond_wait(&cv_gtr, &mutex_gtr);
   if (gps_thread_result == 2) {
