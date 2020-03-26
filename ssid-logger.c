@@ -327,10 +327,13 @@ int main(int argc, char *argv[])
   }
   pthread_mutex_unlock(&mutex_gtr);
 
-  // catch CTRL+C to break loop cleanly
   struct sigaction act;
   act.sa_handler = sigint_handler;
+  // catch CTRL+C to break loop cleanly
   sigaction(SIGINT, &act, NULL);
+  // catch quit signal to flush data to file on disk
+  sigaction(SIGQUIT, &act, NULL);
+  sigaction(SIGTERM, &act, NULL);
 
   clock_gettime(CLOCK_MONOTONIC, &start_ts_queue);
 
