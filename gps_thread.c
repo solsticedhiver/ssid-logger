@@ -13,7 +13,7 @@ helper thread that repeatedly retrieve gps coord. from the gpsd daemon
 
 #include "gps_thread.h"
 
-int gps_thread_result;
+int gps_thread_init_result;
 pthread_mutex_t mutex_gtr;
 pthread_cond_t cv_gtr;
 
@@ -36,17 +36,19 @@ void *retrieve_gps_data(void *arg)
 
   option_gps = (bool *)arg;
   if (!*option_gps) {
+    // don't use gpsd
     pthread_mutex_lock(&mutex_gtr);
-    gps_thread_result = 1;
+    gps_thread_init_result = 1;
     pthread_cond_signal(&cv_gtr);
     pthread_mutex_unlock(&mutex_gtr);
     return NULL;
   }
 
-  if (gps_open("localhost", "2947", &gps_data) == -1) {
+  if (gps_open(GPSD_HOST, GPSD_PORT, &gps_data) == -1) {
+    // error connecting to gpsd
     fprintf(stderr, "Error(gpsd): %s\n", gps_errstr(errno));
     pthread_mutex_lock(&mutex_gtr);
-    gps_thread_result = 2;
+    gps_thread_init_result = 2;
     pthread_cond_signal(&cv_gtr);
     pthread_mutex_unlock(&mutex_gtr);
     return NULL;
@@ -54,7 +56,7 @@ void *retrieve_gps_data(void *arg)
   gps_stream(&gps_data, WATCH_ENABLE | WATCH_JSON, NULL);
 
   pthread_mutex_lock(&mutex_gtr);
-  gps_thread_result = 0;
+  gps_thread_init_result = 0;
   pthread_cond_signal(&cv_gtr);
   pthread_mutex_unlock(&mutex_gtr);
 

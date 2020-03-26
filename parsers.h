@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #include "gps_thread.h"
-#include "worker_thread.h"
+#include "logger_thread.h"
 
 struct cipher_suite {
   u_char group_cipher_suite[4];

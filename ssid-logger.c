@@ -15,7 +15,7 @@
 #include "queue.h"
 #include "hopper_thread.h"
 #include "parsers.h"
-#include "worker_thread.h"
+#include "logger_thread.h"
 #include "gps_thread.h"
 #include "db.h"
 
@@ -35,9 +35,9 @@ pcap_t *handle;                 // global, to use it in sigint_handler
 queue_t *queue;                 // queue to hold parsed ap infos
 
 pthread_t hopper;
-pthread_t worker;
+pthread_t logger;
 pthread_t gps;
-int gps_thread_result = 0;
+int gps_thread_init_result = 0;
 pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_gloc = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_gtr = PTHREAD_MUTEX_INITIALIZER;
@@ -141,7 +141,7 @@ void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char * 
   clock_gettime(CLOCK_MONOTONIC, &now);
   if (queue->size == MAX_QUEUE_SIZE / 2 || now.tv_sec - start_ts_queue.tv_sec >= 1) {
     start_ts_queue = now;
-    // the queue is half full or it's been more than a second; waking up the worker thread to process that
+    // the queue is half full or it's been more than a second; waking up the logger thread to process that
     pthread_cond_signal(&cv);
   }
   pthread_mutex_unlock(&mutex_queue);
@@ -294,26 +294,29 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Error creating channel hopper thread\n");
     exit(EXIT_FAILURE);
   }
+  pthread_detach(hopper);
 
   queue = new_queue(MAX_QUEUE_SIZE);
-  // start the helper worker thread
-  if (pthread_create(&worker, NULL, process_queue, NULL)) {
-    fprintf(stderr, "Error creating worker thread\n");
+  // start the helper logger thread
+  if (pthread_create(&logger, NULL, process_queue, NULL)) {
+    fprintf(stderr, "Error creating logger thread\n");
     exit(EXIT_FAILURE);
   }
+  pthread_detach(logger);
 
   // start the helper gps thread
   if (pthread_create(&gps, NULL, retrieve_gps_data, &option_gps)) {
     fprintf(stderr, "Error creating gps thread\n");
     exit(EXIT_FAILURE);
   }
+  pthread_detach(gps);
   // this is a little over-kill but is there a better way ?
   pthread_mutex_lock(&mutex_gtr);
   pthread_cond_wait(&cv_gtr, &mutex_gtr);
-  if (gps_thread_result == 2) {
+  if (gps_thread_init_result == 2) {
     // gps thread can't find gpsd
     pthread_cancel(hopper);
-    pthread_cancel(worker);
+    pthread_cancel(logger);
     pthread_mutex_destroy(&mutex_queue);
     pthread_mutex_destroy(&mutex_gloc);
     pthread_mutex_destroy(&mutex_gtr);
@@ -352,8 +355,8 @@ int main(int argc, char *argv[])
   pcap_close(handle);
 
   pthread_cancel(hopper);
-  pthread_cancel(worker);
   pthread_cancel(gps);
+  pthread_cancel(logger);
   pthread_mutex_destroy(&mutex_queue);
   pthread_mutex_destroy(&mutex_gloc);
   pthread_mutex_destroy(&mutex_gtr);

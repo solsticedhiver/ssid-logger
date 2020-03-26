@@ -3,6 +3,9 @@
 
 #include <time.h>
 
+#define GPSD_HOST "localhost"
+#define GPSD_PORT "2947"
+
 struct gps_loc {
   double lat;
   double lon;

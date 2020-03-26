@@ -14,11 +14,9 @@ worker thread that will process the queue filled by got_packet()
 
 #include "parsers.h"
 #include "queue.h"
-#include "worker_thread.h"
+#include "logger_thread.h"
 #include "gps_thread.h"
 #include "db.h"
-
-static const char HIDDEN_SSID[] = "***";
 
 pthread_cond_t cv;
 pthread_mutex_t mutex_queue;
@@ -40,18 +38,6 @@ void free_ap_info(struct ap_info *ap)
   free(ap->ssid);
   free(ap);
   ap = NULL;
-}
-
-void print_ssid_info(struct ap_info *ap)
-{
-  char *authmode =
-      authmode_from_crypto(ap->rsn, ap->msw, ap->ess, ap->privacy, ap->wps);
-  printf("%s (%s)\n    CH%3d %4dMHz %ddBm %s\n",
-         strlen(ap->ssid) != 0 ? ap->ssid : HIDDEN_SSID, ap->bssid,
-         ap->channel, ap->freq, ap->rssi, authmode);
-  fflush(stdout);
-  free(authmode);
-  return;
 }
 
 void *process_queue(void *args)
