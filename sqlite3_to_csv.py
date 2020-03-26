@@ -4,6 +4,7 @@ import sqlite3
 import csv
 import argparse
 from datetime import datetime
+import time
 import os.path
 import sys
 
@@ -16,6 +17,8 @@ CSV_HEADER_2 = ['MAC', 'SSID', 'AuthMode', 'FirstSeen', 'Channel', 'RSSI',
 
 def main():
     parser = argparse.ArgumentParser(description='Convert sqlite3 beacon.db to a csv file')
+    parser.add_argument('-a', '--after', help='filter beacon with timestamp more recent than AFTER (YYYY-mm-dd[THH:MM])')
+    parser.add_argument('-b', '--before', help='filter beacon with timestamp older than BEFORE (YYYY-mm-dd[THH:MM])')
     parser.add_argument('-i', '--input', required=True, help='input sqlite3 db file')
     parser.add_argument('--force', action='store_true', default=False, help='force overwrite of existing file')
     parser.add_argument('-o', '--output', required=True, help='output csv file name')
@@ -27,6 +30,29 @@ def main():
     if os.path.exists(args.output) and not args.force:
         print(f'Error: {args.output} already exists. Use --force to overwrite', file=sys.stderr)
         sys.exit(-1)
+
+    if args.after:
+        try:
+            start_time = time.mktime(time.strptime(args.after, '%Y-%m-%dT%H:%M'))
+        except  ValueError:
+            try:
+                date = time.strptime(args.after, '%Y-%m-%d')
+                date = time.strptime('%sT00:00' % args.after, '%Y-%m-%dT%H:%M')
+                start_time = time.mktime(date)
+            except ValueError:
+                print(f"Error: can't parse {args.after} timestamp (expected format YYYY-mm-dd[THH:MM])", file=sys.stderr)
+                sys.exit(-1)
+    if args.before:
+        try:
+            end_time = time.mktime(time.strptime(args.before, '%Y-%m-%dT%H:%M'))
+        except  ValueError:
+            try:
+                date = time.strptime(args.before, '%Y-%m-%d')
+                date = time.strptime('%sT00:00' % args.before, '%Y-%m-%dT%H:%M')
+                end_time = time.mktime(date)
+            except ValueError:
+                print(f"Error: can't parse {args.before} timestamp (expected format YYYY-mm-dd[THH:MM])", file=sys.stderr)
+                sys.exit(-1)
 
     try:
         conn = sqlite3.connect(f'file:{args.input}?mode=ro', uri=True)
@@ -53,6 +79,10 @@ def main():
         csvwriter.writerow(CSV_HEADER_2)
         for row in c.fetchall():
             tmp = list(row)
+            if args.after and tmp[3] < start_time:
+                continue
+            if args.before and tmp[3] > end_time:
+                continue
             tmp[3] = datetime.utcfromtimestamp(row[3])
             tmp[6] = f'{row[6]:-2.6f}'
             tmp[7] = f'{row[7]:-2.6f}'
