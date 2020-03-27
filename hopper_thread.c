@@ -51,8 +51,11 @@ void *hop_channel(void *arg)
     NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, freq);
 
     // finally send it and receive the amount of bytes sent
-    /*int ret =*/ nl_send_auto(sckt, msg);
+    int ret = nl_send_auto(sckt, msg);
     //printf("%d bytes sent\n", ret);
+    if (!ret) {
+      goto nla_put_failure;
+    }
 
     nlmsg_free(msg);
 
@@ -69,9 +72,9 @@ void *hop_channel(void *arg)
 
   nla_put_failure:
     nlmsg_free(msg);
-    fprintf(stderr, "Error: couldn't send PUT command to interface\n");
+    fprintf(stderr, "Error: failed to send netlink message\n");
     fflush(stderr);
-    sleep(5);
+    sleep(1);
   }
 
   pthread_cleanup_pop(1);

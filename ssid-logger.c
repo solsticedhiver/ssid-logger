@@ -49,6 +49,7 @@ sqlite3 *db = NULL;
 bool format_csv = false;
 bool option_gps = true;
 FILE *file_ptr = NULL;
+int ret = 0;
 
 void sigint_handler(int s)
 {
@@ -280,7 +281,8 @@ int main(int argc, char *argv[])
   if (pcap_compile(handle, &bfp, filter_exp, 1, PCAP_NETMASK_UNKNOWN) == -1) {
     fprintf(stderr, "Error: couldn't parse filter %s: %s\n",
             filter_exp, pcap_geterr(handle));
-    exit(EXIT_FAILURE);
+    ret = EXIT_FAILURE;
+    goto handle_failure;
   }
   if (pcap_setfilter(handle, &bfp) == -1) {
     fprintf(stderr, "Error: couldn't install filter %s: %s\n",
@@ -292,7 +294,8 @@ int main(int argc, char *argv[])
   // start the channel hopper thread
   if (pthread_create(&hopper, NULL, hop_channel, iface)) {
     fprintf(stderr, "Error creating channel hopper thread\n");
-    exit(EXIT_FAILURE);
+    ret = EXIT_FAILURE;
+    goto hopper_failure;
   }
   pthread_detach(hopper);
 
@@ -300,14 +303,16 @@ int main(int argc, char *argv[])
   // start the helper logger thread
   if (pthread_create(&logger, NULL, process_queue, NULL)) {
     fprintf(stderr, "Error creating logger thread\n");
-    exit(EXIT_FAILURE);
+    ret = EXIT_FAILURE;
+    goto logger_failure;
   }
   pthread_detach(logger);
 
   // start the helper gps thread
   if (pthread_create(&gps, NULL, retrieve_gps_data, &option_gps)) {
     fprintf(stderr, "Error creating gps thread\n");
-    exit(EXIT_FAILURE);
+    ret = EXIT_FAILURE;
+    goto gps_failure;
   }
   pthread_detach(gps);
   // this is a little over-kill but is there a better way ?
@@ -315,15 +320,8 @@ int main(int argc, char *argv[])
   pthread_cond_wait(&cv_gtr, &mutex_gtr);
   if (gps_thread_init_result == 2) {
     // gps thread can't find gpsd
-    pthread_cancel(hopper);
-    pthread_cancel(logger);
-    pthread_mutex_destroy(&mutex_queue);
-    pthread_mutex_destroy(&mutex_gloc);
-    pthread_mutex_destroy(&mutex_gtr);
-    pthread_cond_destroy(&cv);
-    pthread_cond_destroy(&cv_gtr);
-    free(file_name);
-    exit(EXIT_FAILURE);
+    ret = EXIT_FAILURE;
+    goto gps_init_failure;
   }
   pthread_mutex_unlock(&mutex_gtr);
 
@@ -355,16 +353,22 @@ int main(int argc, char *argv[])
   printf("Hit CTRL+C to quit\n");
   pcap_loop(handle, -1, (pcap_handler) got_packet, NULL);
 
-  pcap_close(handle);
+  if (format_csv) {
+    fclose(file_ptr);
+  } else {
+    commit_txn(db);
+    sqlite3_close(db);
+  }
 
-  pthread_cancel(hopper);
-  pthread_cancel(gps);
-  pthread_cancel(logger);
-  pthread_mutex_destroy(&mutex_queue);
-  pthread_mutex_destroy(&mutex_gloc);
+gps_init_failure:
   pthread_mutex_destroy(&mutex_gtr);
-  pthread_cond_destroy(&cv);
   pthread_cond_destroy(&cv_gtr);
+
+gps_failure:
+  pthread_cancel(gps);
+
+logger_failure:
+  pthread_cancel(logger);
 
   // free up elements of the queue
   int qs = queue->size;
@@ -375,13 +379,16 @@ int main(int argc, char *argv[])
   }
   free(queue);
 
-  if (format_csv) {
-    fclose(file_ptr);
-  } else {
-    commit_txn(db);
-    sqlite3_close(db);
-  }
+hopper_failure:
+  pthread_cancel(hopper);
+  pthread_mutex_destroy(&mutex_queue);
+  pthread_mutex_destroy(&mutex_gloc);
+  pthread_cond_destroy(&cv);
+
+handle_failure:
+  pcap_close(handle);
+
   free(file_name);
 
-  return (0);
+  return ret;
 }
