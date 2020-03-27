@@ -34,7 +34,7 @@ void *hop_channel(void *arg)
   struct nl_sock *sckt = nl_socket_alloc();
   genl_connect(sckt);
   int ctrl = genl_ctrl_resolve(sckt, "nl80211");
-  enum nl80211_commands command = NL80211_CMD_SET_WIPHY;
+  enum nl80211_commands command = NL80211_CMD_SET_CHANNEL;
 
   // push clean up code when thread is cancelled
   pthread_cleanup_push(cleanup_socket, (void *) sckt);
