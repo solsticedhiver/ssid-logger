@@ -47,7 +47,7 @@ struct timespec start_ts_queue;
 
 sqlite3 *db = NULL;
 bool format_csv = false;
-bool option_gps = true;
+enum _option_gps option_gps = GPS_LOG_ONZ;
 FILE *file_ptr = NULL;
 int ret = 0;
 
@@ -177,7 +177,9 @@ int main(int argc, char *argv[])
       iface = optarg;
       break;
     case 'n':
-      option_gps = false;
+      // one -n: log all SSIDs even if no GPS data so with gps coord. as 0.0
+      // two -n (-n -n): log all SSIDs with no gps coord. (0.0) and disable th euse of gpsd
+      option_gps++;
       break;
     case 'o':
       option_file_name = optarg;
@@ -226,7 +228,7 @@ int main(int argc, char *argv[])
     strncpy(file_name, option_file_name, strlen(option_file_name)+1);
   }
 
-  if (!option_gps) {
+  if (option_gps == GPS_LOG_ZERO) {
     printf("Warning: you have disabled the use of gpsd. All the GPS data will be 0.0.\n"
       "<! Please don't upload such data file to wigle.net !>\n");
   }

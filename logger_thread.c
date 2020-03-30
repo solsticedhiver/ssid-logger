@@ -26,7 +26,7 @@ struct gps_loc gloc;            // global variable to hold retrieved gps data
 sqlite3 *db;
 struct timespec start_ts_cache;
 bool format_csv;
-bool option_gps;
+enum _option_gps option_gps;
 FILE *file_ptr;
 
 void free_ap_info(struct ap_info *ap)
@@ -66,12 +66,17 @@ void *process_queue(void *args)
     for (int j = 0; j < qs; j++) {
       ap = aps[j];
       pthread_mutex_lock(&mutex_gloc);
-      if ((option_gps && gloc.lat && gloc.lon) || !option_gps) {
-        if (!option_gps) {
+      if (option_gps == GPS_LOG_ZERO) {
+        gloc.lat = gloc.lon = gloc.alt = gloc.acc = 0.0;
+        // use system time because we can't use gps fix time
+        clock_gettime(CLOCK_REALTIME, &gloc.ftime);
+      } else if (option_gps == GPS_LOG_ALL) {
+        if (!gloc.lat || !gloc.lon) {
           gloc.lat = gloc.lon = gloc.alt = gloc.acc = 0.0;
-          // use system time because we can't use gps fix time
-          clock_gettime(CLOCK_REALTIME, &gloc.ftime);
         }
+      }
+      if (((option_gps == GPS_LOG_ONZ) && gloc.lat && gloc.lon)
+        || (option_gps == GPS_LOG_ALL) || (option_gps == GPS_LOG_ZERO)) {
         if (!format_csv) {
           insert_beacon(*ap, gloc, db);
         } else {

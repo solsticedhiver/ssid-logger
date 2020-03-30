@@ -32,10 +32,10 @@ void *retrieve_gps_data(void *arg)
 {
   struct gps_data_t gps_data;
   pthread_mutex_t mutex_gloc;
-  bool *option_gps;
+  enum _option_gps *option_gps;
 
-  option_gps = (bool *)arg;
-  if (!*option_gps) {
+  option_gps = (enum _option_gps *)arg;
+  if (*option_gps == GPS_LOG_ZERO) {
     // don't use gpsd
     pthread_mutex_lock(&mutex_gtr);
     gps_thread_init_result = 1;
@@ -66,6 +66,7 @@ void *retrieve_gps_data(void *arg)
   pthread_mutex_init(&mutex_gloc, NULL);
 
   while (1) {
+    gloc.lat = gloc.lon = gloc.alt = gloc.acc = 0.0;
     // wait at most for 1 second to receive data
     if (gps_waiting(&gps_data, 1000000)) {
       #if GPS_VERSION == 1
