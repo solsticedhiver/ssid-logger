@@ -77,7 +77,8 @@ def main():
         csvwriter = csv.writer(csvfile, delimiter=',')
         csvwriter.writerow(CSV_HEADER_1)
         csvwriter.writerow(CSV_HEADER_2)
-        for row in c.fetchall():
+        row = c.fetchone()  # TODO: try/catch this one too
+        while row is not None:
             tmp = list(row)
             if args.after and tmp[3] < start_time:
                 continue
@@ -90,6 +91,10 @@ def main():
             tmp[9] = f'{row[9]:-2.6f}'
             tmp.append('WIFI')
             csvwriter.writerow(tmp)
+            try:
+                row = c.fetchone()
+            except sqlite3.OperationalError as o:
+                pass
 
     conn.close()
 
