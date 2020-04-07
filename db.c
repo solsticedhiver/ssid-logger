@@ -61,6 +61,25 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
     sqlite3_close(*db);
     return ret;
   }
+  sql = "pragma synchronous = normal;";
+  if((ret = sqlite3_exec(*db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
+    sqlite3_close(*db);
+    return ret;
+  }
+  sql = "pragma temp_store = 2;"; // to store temp table and indices in memory
+  if((ret = sqlite3_exec(*db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
+    sqlite3_close(*db);
+    return ret;
+  }
+  sql = "pragma journal_mode = off;"; // disable journal for rollback (we don't use this)
+  if((ret = sqlite3_exec(*db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
+    sqlite3_close(*db);
+    return ret;
+  }
+
   return 0;
 }
 
