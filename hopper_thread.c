@@ -40,19 +40,12 @@ void *hop_channel(void *arg)
   pthread_cleanup_push(cleanup_socket, (void *) sckt);
 
   while (1) {
-    // Allocate a new message
     msg = nlmsg_alloc();
-
-    // create the message so it will send a command to the nl80211 interface
     genlmsg_put(msg, 0, 0, ctrl, 0, 0, command, 0);
-
-    // add specific attributes to change the frequency of the device
     NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, if_nametoindex(device));
     NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, freq);
 
-    // finally send it and receive the amount of bytes sent
     int ret = nl_send_auto(sckt, msg);
-    //printf("%d bytes sent\n", ret);
     if (!ret) {
       goto nla_put_failure;
     }

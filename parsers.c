@@ -118,6 +118,67 @@ int8_t parse_radiotap_header(const u_char * packet, uint16_t * freq, int8_t * rs
   return offset;
 }
 
+void parse_beacon_frame(const u_char *packet, uint32_t header_len,
+  int8_t offset, char **bssid, char **ssid, uint8_t *ssid_len, uint8_t *channel,
+  bool *ess, bool *privacy, bool *wps, struct cipher_suite **rsn, struct cipher_suite **msw)
+{
+  // parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
+  // BSSID
+  const u_char *bssid_addr = packet + offset + 2 + 2 + 6 + 6;   // FC + duration + DA + SA
+  sprintf(*bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0],
+    bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4], bssid_addr[5]);
+
+  // Capability Info
+  const u_char *ci_addr = bssid_addr + 6 + 2 + 8 + 2;
+  uint16_t ci_fields;
+  memcpy(&ci_fields, ci_addr, sizeof(ci_fields));
+  *ess = (bool) (ci_fields & 0x0001);
+  *privacy = (bool) ((ci_fields & 0x0010) >> 4);
+
+  *ssid = NULL;
+  u_char *ie = (u_char *) ci_addr + 2;
+  uint8_t ie_len = *(ie + 1);
+  *channel = 0, *ssid_len = 0;
+  *wps = false/*, utf8_ssid = false*/;
+
+  *rsn = NULL;
+  *msw = NULL;
+  // iterate over Information Element to look for SSID and RSN crypto and MicrosoftWPA
+  while (ie < packet + header_len) {
+    if ((ie + ie_len + 2 < packet + header_len)) {     // just double check that this is an IE with length inside packet
+      switch (*ie) {
+      case 0:                  // SSID aka IE with id 0
+        *ssid_len = *(ie + 1);
+        *ssid = (char *) malloc((*ssid_len + 1) * sizeof(u_char));        // AP name
+        snprintf(*ssid, *ssid_len + 1, "%s", ie + 2);
+        break;
+      case 3:                  // IE with id 3 is DS parameter set ~= channel
+        *channel = *(ie + 2);
+        break;
+      case 48:                 // parse RSN IE
+        *rsn = parse_cipher_suite(ie + 4);
+        break;
+      case 127:                // Extended Capabilities IE
+        if (ie_len >= 7) {
+          //utf8_ssid = (bool) (*(ie + 1 + 7) & 0x01);
+        }
+        break;
+      case 221:
+        if (memcmp(ie + 2, MS_OUI "\001\001", 5) == 0) {
+          // parse MicrosoftWPA IE
+          *msw = parse_cipher_suite(ie + 8);
+        } else if (memcmp(ie + 2, WPS_ID, 4) == 0) {
+          *wps = true;
+        }
+        break;
+      }
+    }
+    ie = ie + ie_len + 2;
+    ie_len = *(ie + 1);
+  }
+  return;
+}
+
 char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
                             bool ess, bool privacy, bool wps)
 {

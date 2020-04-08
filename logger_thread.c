@@ -100,12 +100,7 @@ void *process_queue(void *args)
     }
     for (int j = 0; j < qs; j++) {
       ap = aps[j];
-      if (ap->rsn != NULL)
-        free_cipher_suite(ap->rsn);
-      if (ap->msw != NULL)
-        free_cipher_suite(ap->msw);
-      free(ap->ssid);
-      free(ap);
+      free_ap_info(ap);
     }
     free(aps);
   }

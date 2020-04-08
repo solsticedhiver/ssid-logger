@@ -20,13 +20,9 @@
 #include "db.h"
 
 #define NAME "ssid-logger"
-#define VERSION "0.1.2"
+#define VERSION "0.1.3"
 
 #define SNAP_LEN 512
-#define CSS_OUI "\000\017\254"  // 0x000x0F0xAC or 00-0F-AC
-#define MS_OUI "\000\120\362"   // 0x000x500xF2 or 00-50-F2
-#define WPS_ID "\000\120\362\004"       // 0x000x500xF20x04 or 00-50-F2-04
-
 #define MAX_QUEUE_SIZE 128
 
 #define DB_NAME "beacon.db"
@@ -57,7 +53,7 @@ void sigint_handler(int s)
   pcap_breakloop(handle);
 }
 
-void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char * packet)
+void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char *packet)
 {
   uint16_t freq;
   int8_t rssi;
@@ -67,62 +63,14 @@ void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char * 
     return;
   }
 
-  // parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
-  // BSSID
-  const u_char *bssid_addr = packet + offset + 2 + 2 + 6 + 6;   // FC + duration + DA + SA
-  char bssid[18];
-  sprintf(bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0],
-    bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4],
-    bssid_addr[5]);
+  char *bssid = malloc(18);
+  char *ssid;
+  uint8_t ssid_len, channel;
+  bool ess, privacy, wps;
+  struct cipher_suite *rsn = NULL, *msw = NULL;
 
-  // Capability Info
-  const u_char *ci_addr = bssid_addr + 6 + 2 + 8 + 2;
-  uint16_t ci_fields;
-  memcpy(&ci_fields, ci_addr, sizeof(ci_fields));
-  bool ess = (bool) (ci_fields & 0x0001);
-  bool privacy = (bool) ((ci_fields & 0x0010) >> 4);
-
-  char *ssid = NULL;
-  u_char *ie = (u_char *) ci_addr + 2;
-  uint8_t ie_len = *(ie + 1);
-  uint8_t channel = 0, ssid_len = 0;
-  bool wps = false/*, utf8_ssid = false*/;
-
-  struct cipher_suite *rsn = NULL;
-  struct cipher_suite *msw = NULL;
-  // iterate over Information Element to look for SSID and RSN crypto and MicrosoftWPA
-  while (ie < packet + header->len) {
-    if ((ie + ie_len + 2 < packet + header->len)) {     // just double check that this is an IE with length inside packet
-      switch (*ie) {
-      case 0:                  // SSID aka IE with id 0
-        ssid_len = *(ie + 1);
-        ssid = (char *) malloc((ssid_len + 1) * sizeof(u_char));        // AP name
-        snprintf(ssid, ssid_len + 1, "%s", ie + 2);
-        break;
-      case 3:                  // IE with id 3 is DS parameter set ~= channel
-        channel = *(ie + 2);
-        break;
-      case 48:                 // parse RSN IE
-        rsn = parse_cipher_suite(ie + 4);
-        break;
-      case 127:                // Extended Capabilities IE
-        if (ie_len >= 7) {
-          //utf8_ssid = (bool) (*(ie + 1 + 7) & 0x01);
-        }
-        break;
-      case 221:
-        if (memcmp(ie + 2, MS_OUI "\001\001", 5) == 0) {
-          // parse MicrosoftWPA IE
-          msw = parse_cipher_suite(ie + 8);
-        } else if (memcmp(ie + 2, WPS_ID, 4) == 0) {
-          wps = true;
-        }
-        break;
-      }
-    }
-    ie = ie + ie_len + 2;
-    ie_len = *(ie + 1);
-  }
+  parse_beacon_frame(packet, header->len, offset, &bssid, &ssid, &ssid_len, &channel, &ess,
+    &privacy, &wps, &rsn, &msw);
 
   struct ap_info *ap = malloc(sizeof(struct ap_info));
   strncpy(ap->bssid, bssid, 18);
@@ -135,6 +83,8 @@ void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char * 
   ap->ess = ess;
   ap->privacy = privacy;
   ap->wps = wps;
+
+  free(bssid);
 
   pthread_mutex_lock(&mutex_queue);
   enqueue(queue, ap);
