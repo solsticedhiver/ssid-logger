@@ -243,6 +243,9 @@ int main(int argc, char *argv[])
   }
   pcap_freecode(&bfp);
 
+  // only capture packets received by interface
+  pcap_setdirection(handle, PCAP_D_IN);
+
   // start the channel hopper thread
   if (pthread_create(&hopper, NULL, hop_channel, iface)) {
     fprintf(stderr, "Error creating channel hopper thread\n");
