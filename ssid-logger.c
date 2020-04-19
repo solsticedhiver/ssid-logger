@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 
   if (option_gps == GPS_LOG_ZERO) {
     printf(":: Warning: you have disabled the use of gpsd. All the GPS data will be 0.0.\n"
-      "** Please don't upload such data file to wigle.net **\n");
+      "** Please, don't upload such data file to wigle.net **\n");
   }
 
   char errbuf[PCAP_ERRBUF_SIZE];
@@ -211,11 +211,14 @@ int main(int argc, char *argv[])
   }
   pcap_set_snaplen(handle, SNAP_LEN);
   pcap_set_timeout(handle, 1000);
-  // only capture packets received by interface
-  pcap_setdirection(handle, PCAP_D_IN);
   pcap_set_promisc(handle, 1);
 
   if (pcap_activate(handle)) {
+    pcap_perror(handle, "Error: ");
+    exit(EXIT_FAILURE);
+  }
+  // only capture packets received by interface
+  if (pcap_setdirection(handle, PCAP_D_IN)) {
     pcap_perror(handle, "Error: ");
     exit(EXIT_FAILURE);
   }
