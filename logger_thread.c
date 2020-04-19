@@ -1,5 +1,5 @@
 /*
-worker thread that will process the queue filled by got_packet()
+worker thread that will process the queue filled by process_packet()
 */
 
 #include <pthread.h>

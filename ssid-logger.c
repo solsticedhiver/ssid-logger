@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <pcap.h>
+#include <pcap/pcap.h>
 #include <signal.h>
 #include <unistd.h>
 #include <ctype.h>
@@ -20,7 +20,7 @@
 #include "db.h"
 
 #define NAME "ssid-logger"
-#define VERSION "0.1.3"
+#define VERSION "0.1.4"
 
 #define SNAP_LEN 512
 #define MAX_QUEUE_SIZE 128
@@ -53,7 +53,7 @@ void sigint_handler(int s)
   pcap_breakloop(handle);
 }
 
-void got_packet(u_char * args, const struct pcap_pkthdr *header, const u_char *packet)
+void process_packet(u_char * args, const struct pcap_pkthdr *header, const u_char *packet)
 {
   uint16_t freq;
   int8_t rssi;
@@ -179,8 +179,8 @@ int main(int argc, char *argv[])
   }
 
   if (option_gps == GPS_LOG_ZERO) {
-    printf("Warning: you have disabled the use of gpsd. All the GPS data will be 0.0.\n"
-      "<! Please don't upload such data file to wigle.net !>\n");
+    printf(":: Warning: you have disabled the use of gpsd. All the GPS data will be 0.0.\n"
+      "** Please don't upload such data file to wigle.net **\n");
   }
 
   char errbuf[PCAP_ERRBUF_SIZE];
@@ -204,26 +204,44 @@ int main(int argc, char *argv[])
       exit(EXIT_FAILURE);
     }
   }
-
-  handle = pcap_open_live(iface, SNAP_LEN, 1, 1000, errbuf);
+  handle = pcap_create(iface, errbuf);
   if (handle == NULL) {
-    fprintf(stderr, "Error: couldn't open device %s: %s\n", iface, errbuf);
+    fprintf(stderr, "Error: unable to create pcap handle: %s\n", errbuf);
+    exit(EXIT_FAILURE);
+  }
+  pcap_set_snaplen(handle, SNAP_LEN);
+  pcap_set_timeout(handle, 1000);
+  // only capture packets received by interface
+  pcap_setdirection(handle, PCAP_D_IN);
+  pcap_set_promisc(handle, 1);
+
+  if (pcap_activate(handle)) {
+    pcap_perror(handle, "Error: ");
     exit(EXIT_FAILURE);
   }
 
-  if (pcap_datalink(handle) != DLT_IEEE802_11_RADIO) {
-    fprintf(stderr, "Error: monitor mode is not enabled for %s\n", iface);
-    if (pcap_can_set_rfmon(handle) == 1) {
-      printf("Trying to set %s in monitor mode...\n", iface);
-      if (pcap_set_rfmon(handle, 1) != 0) {
-        fprintf(stderr, "Error: unable to set %s in monitor mode\n", iface);
-        exit(EXIT_FAILURE);
-      } else {
-        printf("%s has been set in monitor mode\n", iface);
-      }
-    } else {
+  int *dlt_buf, dlt_buf_len;
+  dlt_buf_len = pcap_list_datalinks(handle, &dlt_buf);
+  if (dlt_buf_len < 0) {
+    pcap_perror(handle, "Error: ");
+    exit(EXIT_FAILURE);
+  }
+  bool found = false;
+  for (int i=0; i< dlt_buf_len;i++) {
+    if  (dlt_buf[i] == DLT_IEEE802_11_RADIO) {
+      found = true;
+    }
+  }
+  pcap_free_datalinks(dlt_buf);
+
+  if (found) {
+    if (pcap_set_datalink(handle, DLT_IEEE802_11_RADIO)) {
+      pcap_perror(handle, "Error: ");
       exit(EXIT_FAILURE);
     }
+  } else {
+    fprintf(stderr, "Error: the interface does not support radiotap header or is not in monitor mode\n");
+    exit(EXIT_FAILURE);
   }
 
   // only capture beacon frames
@@ -237,14 +255,11 @@ int main(int argc, char *argv[])
     goto handle_failure;
   }
   if (pcap_setfilter(handle, &bfp) == -1) {
-    fprintf(stderr, "Error: couldn't install filter %s: %s\n",
+    fprintf(stderr, "Error: couldn't install filter '%s': %s\n",
             filter_exp, pcap_geterr(handle));
     exit(EXIT_FAILURE);
   }
   pcap_freecode(&bfp);
-
-  // only capture packets received by interface
-  pcap_setdirection(handle, PCAP_D_IN);
 
   // start the channel hopper thread
   if (pthread_create(&hopper, NULL, hop_channel, iface)) {
@@ -306,7 +321,15 @@ int main(int argc, char *argv[])
   // we have to cheat a little and print the message before pcap_loop
   printf(":: Started sniffing beacon on %s, writing to %s\n", iface, file_name);
   printf("Hit CTRL+C to quit\n");
-  pcap_loop(handle, -1, (pcap_handler) got_packet, NULL);
+  int err;
+  if ((err = pcap_loop(handle, -1, (pcap_handler) process_packet, NULL))) {
+    if (err == PCAP_ERROR) {
+      pcap_perror(handle, "Error: ");
+    }
+    if (err == PCAP_ERROR_BREAK) {
+      printf("exiting...\n");
+    }
+  }
 
   if (format_csv) {
     fclose(file_ptr);
