@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
   bool found = false;
-  for (int i=0; i< dlt_buf_len;i++) {
+  for (int i=0; i< dlt_buf_len; i++) {
     if  (dlt_buf[i] == DLT_IEEE802_11_RADIO) {
       found = true;
     }
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
       exit(EXIT_FAILURE);
     }
   } else {
-    fprintf(stderr, "Error: the interface does not support radiotap header or is not in monitor mode\n");
+    fprintf(stderr, "Error: the interface %s does not support radiotap header or is not in monitor mode\n", iface);
     exit(EXIT_FAILURE);
   }
 
