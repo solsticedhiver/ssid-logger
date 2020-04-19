@@ -90,6 +90,7 @@ void *process_queue(void *args)
     clock_gettime(CLOCK_MONOTONIC, &now);
     if (now.tv_sec - start_ts_cache.tv_sec >= DB_CACHE_TIME) {
       if (format_csv) {
+        fflush(file_ptr);
         fsync(fileno(file_ptr));
       } else {
         // commit to db
