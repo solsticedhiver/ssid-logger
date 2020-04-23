@@ -328,6 +328,7 @@ int main(int argc, char *argv[])
   if ((err = pcap_loop(handle, -1, (pcap_handler) process_packet, NULL))) {
     if (err == PCAP_ERROR) {
       pcap_perror(handle, "Error: ");
+      ret = err;
     }
     if (err == PCAP_ERROR_BREAK) {
       printf("exiting...\n");
