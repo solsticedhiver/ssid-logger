@@ -100,10 +100,14 @@ void process_packet(u_char * args, const struct pcap_pkthdr *header, const u_cha
 
 void usage(void)
 {
-  printf("Usage: ssid-logger -i IFACE [-f csv|sqlite3] [-o FILENAME]\n");
+  printf("Usage: ssid-logger -i IFACE [-f csv|sqlite3] [-o FILENAME] [-n] [-n] [-V]\n");
   printf("  -i IFACE        interface to use\n"
          "  -f csv|sqlite3  output format to use (default sqlite3)\n"
-         "  -o FILENAME     explicitly set the output filename\n");
+         "  -o FILENAME     explicitly set the output filename\n"
+         "  -n              log ssid even if no gps coordinates are available\n"
+         "  -nn or -n -n    don't try to use gpsd and log all ssids\n"
+         "  -V              print version and exit\n"
+       );
 }
 
 int main(int argc, char *argv[])
@@ -128,7 +132,7 @@ int main(int argc, char *argv[])
       break;
     case 'n':
       // one -n: log all SSIDs even if no GPS data so with gps coord. as 0.0
-      // two -n (-n -n): log all SSIDs with no gps coord. (0.0) and disable th euse of gpsd
+      // two -n (-n -n): log all SSIDs with no gps coord. (0.0) and disable the use of gpsd
       option_gps++;
       break;
     case 'o':
