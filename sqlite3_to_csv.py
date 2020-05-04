@@ -84,7 +84,7 @@ def main():
                 continue
             if args.before and tmp[3] > end_time:
                 continue
-            tmp[3] = datetime.fromtimestamp(row[3])
+            tmp[3] = datetime.utcfromtimestamp(row[3])
             tmp[6] = f'{row[6]:-2.6f}'
             tmp[7] = f'{row[7]:-2.6f}'
             tmp[8] = f'{row[8]:-2.6f}'

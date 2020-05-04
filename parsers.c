@@ -278,7 +278,7 @@ char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
   char *authmode, *ap_str;
 
   authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
-  strftime(firstseen, 20, "%Y-%m-%d %H:%M:%S", localtime(&gloc.ftime.tv_sec));
+  strftime(firstseen, 20, "%Y-%m-%d %H:%M:%S", gmtime(&gloc.ftime.tv_sec));
   sprintf(tail, "%d,%d,%-2.6f,%-2.6f,%-2.6f,%-2.6f,WIFI", ap.channel, ap.rssi, gloc.lat,
     gloc.lon, gloc.alt, gloc.acc);
 
