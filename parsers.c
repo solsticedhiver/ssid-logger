@@ -303,3 +303,62 @@ char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
 //MAC,SSID,AuthMode,FirstSeen,Channel,RSSI,CurrentLatitude,CurrentLongitude,AltitudeMeters,AccuracyMeters,Type
 //A4:3E:51:XX:XX:XX,Livebox-XXXX,[WPA-PSK-CCMP+TKIP] [WPA2-PSK-CCMP+TKIP][ESS],2020-02-15 17:52:51,6,-78,50.0000000000,-3.0000000000,19.308001,0,WIFI
 }
+
+int parse_os_release(char **os_name, char **os_version)
+{
+  char buf[BUFSIZ], *p;
+  char *path = strdup("/etc/os-release");
+  FILE *fp = fopen(path, "r");
+
+  if (fp == NULL) {
+    free(path);
+    path = strdup("/usr/lib/os-release");
+    fp = fopen(path, "r");
+  }
+  free(path);
+  if (fp == NULL) {
+    return -1;
+  }
+  while (fgets(buf, sizeof(buf), fp)) {
+    char *value, *q;
+
+    // ignore comments
+    if (buf[0] == '#') {
+      continue;
+    }
+
+    // split into name=value
+    p = strchr(buf, '=');
+    if (!p) {
+      continue;
+    }
+    *p++ = 0;
+
+    value = p;
+    q = p;
+    while (*p) {
+      if (*p == '\\') {
+        ++p;
+        if (!*p) {
+          break;
+        }
+        *q++ = *p++;
+      } else if (*p == '\'' || *p == '"' ||
+          *p == '\n') {
+        ++p;
+      } else {
+        *q++ = *p++;
+      }
+    }
+    *q = 0;
+
+    if (!strcmp(buf, "ID")) {
+      *os_name = strdup(value);
+    } else if (!strcmp(buf, "VERSION_ID")) {
+      *os_version = strdup(value);
+    }
+  }
+  fclose(fp);
+
+  return 0;
+}

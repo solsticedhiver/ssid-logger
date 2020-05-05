@@ -35,4 +35,6 @@ extern char *authmode_from_crypto(struct cipher_suite *rsn,
                                   bool privacy, bool wps);
 
 char *ap_to_str(struct ap_info ap, struct gps_loc gloc);
+
+int parse_os_release(char **os_name, char **os_version);
 #endif

@@ -313,10 +313,15 @@ int main(int argc, char *argv[])
   clock_gettime(CLOCK_MONOTONIC, &start_ts_queue);
 
   if (format_csv) {
+    char *os_name = NULL, *os_version = NULL;
+    parse_os_release(&os_name, &os_version);
+
     file_ptr = fopen(file_name, "a");
-    fprintf(file_ptr, "WigleWifi-1.4,appRelease=%s,model=ssid-logger,release=%s,"
+    fprintf(file_ptr, "WigleWifi-1.4,appRelease=%s,model=%s,release=%s,"
       "device=ssid-logger,display=ssid-logger,board=ssid-logger,brand=ssid-logger\n",
-      VERSION, VERSION);
+      VERSION, os_name ? os_name : "linux", os_version ? os_version : "unknown");
+    free(os_name);
+    free(os_version);
     fprintf(file_ptr, "MAC,SSID,AuthMode,FirstSeen,Channel,RSSI,"
       "CurrentLatitude,CurrentLongitude,AltitudeMeters,"
       "AccuracyMeters,Type\n");

@@ -7,13 +7,35 @@ from datetime import datetime
 import time
 import os.path
 import sys
+import shlex
 
 VERSION = '0.1'
-CSV_HEADER_1 = ['WigleWifi-1.4', f'appRelease={VERSION}', 'model=ssid-logger',
-    f'release={VERSION}', 'device=ssid-logger', 'display=ssid-logger',
-    'board=ssid-logger', 'brand=ssid-logger']
-CSV_HEADER_2 = ['MAC', 'SSID', 'AuthMode', 'FirstSeen', 'Channel', 'RSSI',
+CSV_PRE_HEADER = 'WigleWifi-1.4,appRelease={},model={},release={},device=ssid-logger,display=ssid-logger,board=ssid-logger,brand=ssid-logger'
+CSV_HEADER = ['MAC', 'SSID', 'AuthMode', 'FirstSeen', 'Channel', 'RSSI',
     'CurrentLatitude', 'CurrentLongitude', 'AltitudeMeters', 'AccuracyMeters', 'Type']
+
+# borrowed from distro.py module
+def _parse_os_release_content():
+    props = {'version_id': 'unknown', 'id': 'linux'}
+    if os.path.exists('/etc/os-release'):
+        path = '/etc/os-release'
+    elif os.path.exists('/usr/lib/os-release'):
+        path = '/usr/lib/os-release'
+    else:
+        return props
+
+    with open(path, 'r') as lines:
+        lexer = shlex.shlex(lines, posix=True)
+        lexer.whitespace_split = True
+
+        tokens = list(lexer)
+        for token in tokens:
+            if '=' in token:
+                k, v = token.split('=', 1)
+                props[k.lower()] = v
+            else:
+                pass
+    return props
 
 def main():
     parser = argparse.ArgumentParser(description='Convert sqlite3 beacon.db to a csv file')
@@ -73,10 +95,11 @@ def main():
         inner join authmode on authmode.id=beacon.authmode;'''
     c.execute(sql)
 
-    with open(args.output, 'w') as csvfile:
+    props = _parse_os_release_content()
+    with open(args.output, 'w', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',')
-        csvwriter.writerow(CSV_HEADER_1)
-        csvwriter.writerow(CSV_HEADER_2)
+        csvwriter.writerow(CSV_PRE_HEADER.format(VERSION, props['id'], props['version_id']).split(','))
+        csvwriter.writerow(CSV_HEADER)
         row = c.fetchone()  # TODO: try/catch this one too
         while row is not None:
             tmp = list(row)
