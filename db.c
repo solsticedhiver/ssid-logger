@@ -202,12 +202,11 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db)
   char *authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
   authmode_id = insert_authmode(authmode, db);
   free(authmode);
-  time_t now = time(NULL);
 
   char sql[256];
   snprintf(sql, 256, "insert into beacon (ts, ap, channel, rssi, lat, lon, alt, acc, authmode)"
     "values (%lu, %u, %u, %d, %f, %f, %f, %f, %d);",
-    now, ap_id, ap.channel, ap.rssi, gloc.lat, gloc.lon, isnan(gloc.alt) ? 0.0 : gloc.alt, gloc.acc, authmode_id);
+    gloc.ftime.tv_sec, ap_id, ap.channel, ap.rssi, gloc.lat, gloc.lon, isnan(gloc.alt) ? 0.0 : gloc.alt, gloc.acc, authmode_id);
   if((ret = sqlite3_exec(db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
