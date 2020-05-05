@@ -12,21 +12,21 @@
 #define WPS_ID "\000\120\362\004"       // 0x000x500xF20x04 or 00-50-F2-04
 
 struct cipher_suite {
-  u_char group_cipher_suite[4];
+  uint8_t group_cipher_suite[4];
   uint16_t pairwise_cipher_count;
-  u_char **pairwise_cipher_suite;
+  uint8_t **pairwise_cipher_suite;
   uint16_t akm_cipher_count;
-  u_char **akm_cipher_suite;
+  uint8_t **akm_cipher_suite;
 };
 
 extern void free_cipher_suite(struct cipher_suite *cs);
 
-extern struct cipher_suite *parse_cipher_suite(u_char * start);
+extern struct cipher_suite *parse_cipher_suite(uint8_t * start);
 
-extern int8_t parse_radiotap_header(const u_char * packet, uint16_t * freq,
+extern int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq,
                                     int8_t * rssi);
 
-extern void parse_beacon_frame(const u_char *packet, uint32_t header_len,
+extern void parse_beacon_frame(const uint8_t *packet, uint32_t header_len,
   int8_t offset, char **bssid, char **ssid, uint8_t *ssid_len, uint8_t *channel,
   bool *ess, bool *privacy, bool *wps, struct cipher_suite **rsn, struct cipher_suite **msw);
 

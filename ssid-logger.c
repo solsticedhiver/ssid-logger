@@ -53,7 +53,7 @@ void sigint_handler(int s)
   pcap_breakloop(handle);
 }
 
-void process_packet(u_char * args, const struct pcap_pkthdr *header, const u_char *packet)
+void process_packet(uint8_t * args, const struct pcap_pkthdr *header, const uint8_t *packet)
 {
   uint16_t freq;
   int8_t rssi;

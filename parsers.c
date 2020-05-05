@@ -36,30 +36,30 @@ void free_cipher_suite(struct cipher_suite *cs)
   return;
 }
 
-struct cipher_suite *parse_cipher_suite(u_char * start)
+struct cipher_suite *parse_cipher_suite(uint8_t * start)
 {
   struct cipher_suite *cs = malloc(sizeof(struct cipher_suite));
 
   memcpy(cs->group_cipher_suite, start, 4);
 
   uint16_t pcsc = cs->pairwise_cipher_count = *(start + 4);
-  cs->pairwise_cipher_suite = malloc(pcsc * sizeof(u_char *));
+  cs->pairwise_cipher_suite = malloc(pcsc * sizeof(uint8_t *));
   for (int i = 0; i < pcsc; i++) {
-    cs->pairwise_cipher_suite[i] = malloc(4 * sizeof(u_char));
+    cs->pairwise_cipher_suite[i] = malloc(4 * sizeof(uint8_t));
     memcpy(cs->pairwise_cipher_suite[i], start + 4 + 2 + i * 4, 4);
   }
 
   uint16_t akmsc = cs->akm_cipher_count = *(start + 4 + 2 + pcsc * 4);
-  cs->akm_cipher_suite = malloc(akmsc * sizeof(u_char *));
+  cs->akm_cipher_suite = malloc(akmsc * sizeof(uint8_t *));
   for (int i = 0; i < akmsc; i++) {
-    cs->akm_cipher_suite[i] = malloc(4 * sizeof(u_char));
+    cs->akm_cipher_suite[i] = malloc(4 * sizeof(uint8_t));
     memcpy(cs->akm_cipher_suite[i], start + 4 + 2 + pcsc * 4 + 2 + i * 4,
            4);
   }
   return cs;
 }
 
-int8_t parse_radiotap_header(const u_char * packet, uint16_t * freq, int8_t * rssi)
+int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq, int8_t * rssi)
 {
   // parse radiotap header to get frequency and rssi
   // returns radiotap header size or -1 on error
@@ -118,25 +118,25 @@ int8_t parse_radiotap_header(const u_char * packet, uint16_t * freq, int8_t * rs
   return offset;
 }
 
-void parse_beacon_frame(const u_char *packet, uint32_t header_len,
+void parse_beacon_frame(const uint8_t *packet, uint32_t header_len,
   int8_t offset, char **bssid, char **ssid, uint8_t *ssid_len, uint8_t *channel,
   bool *ess, bool *privacy, bool *wps, struct cipher_suite **rsn, struct cipher_suite **msw)
 {
   // parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
   // BSSID
-  const u_char *bssid_addr = packet + offset + 2 + 2 + 6 + 6;   // FC + duration + DA + SA
+  const uint8_t *bssid_addr = packet + offset + 2 + 2 + 6 + 6;   // FC + duration + DA + SA
   sprintf(*bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0],
     bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4], bssid_addr[5]);
 
   // Capability Info
-  const u_char *ci_addr = bssid_addr + 6 + 2 + 8 + 2;
+  const uint8_t *ci_addr = bssid_addr + 6 + 2 + 8 + 2;
   uint16_t ci_fields;
   memcpy(&ci_fields, ci_addr, sizeof(ci_fields));
   *ess = (bool) (ci_fields & 0x0001);
   *privacy = (bool) ((ci_fields & 0x0010) >> 4);
 
   *ssid = NULL;
-  u_char *ie = (u_char *) ci_addr + 2;
+  uint8_t *ie = (uint8_t *) ci_addr + 2;
   uint8_t ie_len = *(ie + 1);
   *channel = 0, *ssid_len = 0;
   *wps = false/*, utf8_ssid = false*/;
@@ -149,7 +149,7 @@ void parse_beacon_frame(const u_char *packet, uint32_t header_len,
       switch (*ie) {
       case 0:                  // SSID aka IE with id 0
         *ssid_len = *(ie + 1);
-        *ssid = (char *) malloc((*ssid_len + 1) * sizeof(u_char));        // AP name
+        *ssid = (char *) malloc((*ssid_len + 1) * sizeof(uint8_t));        // AP name
         snprintf(*ssid, *ssid_len + 1, "%s", ie + 2);
         break;
       case 3:                  // IE with id 3 is DS parameter set ~= channel
