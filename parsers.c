@@ -118,7 +118,7 @@ int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq, int8_t * r
   return offset;
 }
 
-void parse_beacon_frame(const uint8_t *packet, uint32_t header_len,
+void parse_beacon_frame(const uint8_t *packet, uint32_t packet_len,
   int8_t offset, char **bssid, char **ssid, uint8_t *ssid_len, uint8_t *channel,
   bool *ess, bool *privacy, bool *wps, struct cipher_suite **rsn, struct cipher_suite **msw)
 {
@@ -144,8 +144,8 @@ void parse_beacon_frame(const uint8_t *packet, uint32_t header_len,
   *rsn = NULL;
   *msw = NULL;
   // iterate over Information Element to look for SSID and RSN crypto and MicrosoftWPA
-  while (ie < packet + header_len) {
-    if ((ie + ie_len + 2 < packet + header_len)) {     // just double check that this is an IE with length inside packet
+  while (ie < packet + packet_len) {
+    if ((ie + ie_len + 2 <= packet + packet_len)) {     // just double check that this is an IE with length inside packet
       switch (*ie) {
       case 0:                  // SSID aka IE with id 0
         *ssid_len = *(ie + 1);
