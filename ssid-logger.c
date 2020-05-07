@@ -63,28 +63,9 @@ void process_packet(uint8_t * args, const struct pcap_pkthdr *header, const uint
     return;
   }
 
-  char *bssid = malloc(18);
-  char *ssid;
-  uint8_t ssid_len, channel;
-  bool ess, privacy, wps;
-  struct cipher_suite *rsn = NULL, *msw = NULL;
-
-  parse_beacon_frame(packet, header->len, offset, &bssid, &ssid, &ssid_len, &channel, &ess,
-    &privacy, &wps, &rsn, &msw);
-
-  struct ap_info *ap = malloc(sizeof(struct ap_info));
-  strncpy(ap->bssid, bssid, 18);
-  ap->ssid = ssid;
-  ap->channel = channel;
+  struct ap_info *ap = parse_beacon_frame(packet, header->len, offset);
   ap->freq = freq;
   ap->rssi = rssi;
-  ap->rsn = rsn;
-  ap->msw = msw;
-  ap->ess = ess;
-  ap->privacy = privacy;
-  ap->wps = wps;
-
-  free(bssid);
 
   pthread_mutex_lock(&mutex_queue);
   enqueue(queue, ap);

@@ -23,12 +23,9 @@ extern void free_cipher_suite(struct cipher_suite *cs);
 
 extern struct cipher_suite *parse_cipher_suite(uint8_t * start);
 
-extern int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq,
-                                    int8_t * rssi);
+extern int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq, int8_t * rssi);
 
-extern void parse_beacon_frame(const uint8_t *packet, uint32_t header_len,
-  int8_t offset, char **bssid, char **ssid, uint8_t *ssid_len, uint8_t *channel,
-  bool *ess, bool *privacy, bool *wps, struct cipher_suite **rsn, struct cipher_suite **msw);
+struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, int8_t offset);
 
 extern char *authmode_from_crypto(struct cipher_suite *rsn,
                                   struct cipher_suite *msw, bool ess,

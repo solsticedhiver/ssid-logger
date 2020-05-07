@@ -118,45 +118,45 @@ int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq, int8_t * r
   return offset;
 }
 
-void parse_beacon_frame(const uint8_t *packet, uint32_t packet_len,
-  int8_t offset, char **bssid, char **ssid, uint8_t *ssid_len, uint8_t *channel,
-  bool *ess, bool *privacy, bool *wps, struct cipher_suite **rsn, struct cipher_suite **msw)
+struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, int8_t offset)
 {
+  struct ap_info *ap = malloc(sizeof(struct ap_info));
+
   // parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
   // BSSID
   const uint8_t *bssid_addr = packet + offset + 2 + 2 + 6 + 6;   // FC + duration + DA + SA
-  sprintf(*bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0],
+  sprintf(ap->bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0],
     bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4], bssid_addr[5]);
 
   // Capability Info
   const uint8_t *ci_addr = bssid_addr + 6 + 2 + 8 + 2;
   uint16_t ci_fields;
   memcpy(&ci_fields, ci_addr, sizeof(ci_fields));
-  *ess = (bool) (ci_fields & 0x0001);
-  *privacy = (bool) ((ci_fields & 0x0010) >> 4);
+  ap->ess = (bool) (ci_fields & 0x0001);
+  ap->privacy = (bool) ((ci_fields & 0x0010) >> 4);
 
-  *ssid = NULL;
+  ap->ssid = NULL;
   uint8_t *ie = (uint8_t *) ci_addr + 2;
   uint8_t ie_len = *(ie + 1);
-  *channel = 0, *ssid_len = 0;
-  *wps = false/*, utf8_ssid = false*/;
+  ap->channel = 0, ap->ssid_len = 0;
+  ap->wps = false/*, utf8_ssid = false*/;
 
-  *rsn = NULL;
-  *msw = NULL;
+  ap->rsn = NULL;
+  ap->msw = NULL;
   // iterate over Information Element to look for SSID and RSN crypto and MicrosoftWPA
   while (ie < packet + packet_len) {
     if ((ie + ie_len + 2 <= packet + packet_len)) {     // just double check that this is an IE with length inside packet
       switch (*ie) {
       case 0:                  // SSID aka IE with id 0
-        *ssid_len = *(ie + 1);
-        *ssid = (char *) malloc((*ssid_len + 1) * sizeof(uint8_t));        // AP name
-        snprintf(*ssid, *ssid_len + 1, "%s", ie + 2);
+        ap->ssid_len = *(ie + 1);
+        ap->ssid = (char *) malloc((ap->ssid_len + 1) * sizeof(uint8_t));        // AP name
+        snprintf(ap->ssid, ap->ssid_len + 1, "%s", ie + 2);
         break;
       case 3:                  // IE with id 3 is DS parameter set ~= channel
-        *channel = *(ie + 2);
+        ap->channel = *(ie + 2);
         break;
       case 48:                 // parse RSN IE
-        *rsn = parse_cipher_suite(ie + 4);
+        ap->rsn = parse_cipher_suite(ie + 4);
         break;
       case 127:                // Extended Capabilities IE
         if (ie_len >= 7) {
@@ -166,9 +166,9 @@ void parse_beacon_frame(const uint8_t *packet, uint32_t packet_len,
       case 221:
         if (memcmp(ie + 2, MS_OUI "\001\001", 5) == 0) {
           // parse MicrosoftWPA IE
-          *msw = parse_cipher_suite(ie + 8);
+          ap->msw = parse_cipher_suite(ie + 8);
         } else if (memcmp(ie + 2, WPS_ID, 4) == 0) {
-          *wps = true;
+          ap->wps = true;
         }
         break;
       }
@@ -176,7 +176,7 @@ void parse_beacon_frame(const uint8_t *packet, uint32_t packet_len,
     ie = ie + ie_len + 2;
     ie_len = *(ie + 1);
   }
-  return;
+  return ap;
 }
 
 char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
