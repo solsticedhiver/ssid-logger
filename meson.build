@@ -14,6 +14,7 @@ nl_dep = dependency('libnl-3.0')
 genl_dep = dependency('libnl-genl-3.0')
 gps_dep = dependency('libgps')
 sqlite3_dep = dependency('sqlite3')
+cmocka_dep = dependency('cmocka', required: false)
 
 if get_option('blink_rpi0_led')
   add_project_arguments('-DBLINK_LED=1', language:'c')
@@ -23,3 +24,10 @@ endif
 executable('ssid-logger', src,
   dependencies: [pcap_dep, pthread_dep, nl_dep, genl_dep, gps_dep, sqlite3_dep],
   install: true)
+
+if cmocka_dep.found()
+  t = executable('parsers_test',
+    ['tests/parsers_test.c', 'parsers.c', 'queue.c', 'logger_thread.c', 'db.c', 'radiotap.c'],
+    dependencies: [cmocka_dep, pcap_dep, sqlite3_dep])
+  test('Test parse_beacon_frame', t)
+endif
