@@ -1,0 +1,17 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define NAME "ssid-logger"
+#define VERSION "@version@"
+
+#define SNAP_LEN 512
+#define MAX_QUEUE_SIZE 128
+
+#define DB_NAME "beacon.db"
+
+#define HOP_PER_SECOND 3
+
+#define GPSD_HOST "localhost"
+#define GPSD_PORT "2947"
+
+#endif

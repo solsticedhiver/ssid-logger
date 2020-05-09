@@ -1,4 +1,10 @@
-project('ssid-logger', 'c', version:'0.1.2')
+project('ssid-logger', 'c', version: '0.1.5')
+
+conf_data = configuration_data()
+conf_data.set('version', '0.1.5')
+configure_file(input : 'config.h.in',
+               output : 'config.h',
+               configuration : conf_data)
 
 src = [ 'ssid-logger.c', 'hopper_thread.c', 'parsers.c', 'queue.c', 'radiotap.c', 'logger_thread.c', 'gps_thread.c', 'db.c']
 pcap_dep = dependency('pcap', version: '>1.0')

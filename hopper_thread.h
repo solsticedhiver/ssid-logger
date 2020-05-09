@@ -4,7 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define HOP_PER_SECOND 3
+#include "config.h"
+
 #define SLEEP_DURATION (1000/HOP_PER_SECOND)*100
 
 static const uint8_t CHANNELS[] =

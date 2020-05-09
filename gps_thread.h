@@ -3,8 +3,7 @@
 
 #include <time.h>
 
-#define GPSD_HOST "localhost"
-#define GPSD_PORT "2947"
+#include "config.h"
 
 enum _option_gps {
   GPS_LOG_ONZ,   // log SSIDs only if gps data is available (Only Non Zero)

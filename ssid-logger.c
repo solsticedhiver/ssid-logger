@@ -19,13 +19,7 @@
 #include "gps_thread.h"
 #include "db.h"
 
-#define NAME "ssid-logger"
-#define VERSION "0.1.4"
-
-#define SNAP_LEN 512
-#define MAX_QUEUE_SIZE 128
-
-#define DB_NAME "beacon.db"
+#include "config.h"
 
 pcap_t *handle;                 // global, to use it in sigint_handler
 queue_t *queue;                 // queue to hold parsed ap infos
