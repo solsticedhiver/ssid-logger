@@ -166,8 +166,8 @@ int main(int argc, char *argv[])
       time_t now = time(NULL);
       char timestamp[16];
       strftime(timestamp, 16, "%Y%m%dT%H%M%S", gmtime(&now));
-      file_name = malloc(20 * sizeof(char));
-      snprintf(file_name, 20, "%s.csv", timestamp);
+      file_name = malloc(32 * sizeof(char));
+      snprintf(file_name, 32, "%s-ssid-logger.csv", timestamp);
     } else {
       file_name = malloc((strlen(DB_NAME)+1)*sizeof(char));
       file_name = strncpy(file_name, DB_NAME, strlen(DB_NAME) +1);
