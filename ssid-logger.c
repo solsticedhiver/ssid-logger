@@ -75,13 +75,13 @@ void process_packet(uint8_t * args, const struct pcap_pkthdr *header, const uint
 
 void usage(void)
 {
-  printf("Usage: ssid-logger -i IFACE [-f csv|sqlite3] [-o FILENAME] [-n] [-n] [-V]\n");
+  printf("Usage: ssid-logger -i IFACE [-f csv|sqlite3] [-o FILENAME] [-V] [-z] [-z]\n");
   printf("  -i IFACE        interface to use\n"
          "  -f csv|sqlite3  output format to use (default sqlite3)\n"
          "  -o FILENAME     explicitly set the output filename\n"
-         "  -n              log ssid even if no gps coordinates are available\n"
-         "  -nn or -n -n    don't try to use gpsd and log all ssids\n"
          "  -V              print version and exit\n"
+         "  -z              log ssid even if no gps coordinates are available\n"
+         "  -zz or -z -z    don't use gpsd and log all ssids\n"
        );
 }
 
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
   char *file_name = NULL;
   int opt;
 
-  while ((opt = getopt(argc, argv, "f:hi:no:V")) != -1) {
+  while ((opt = getopt(argc, argv, "f:hi:o:Vz")) != -1) {
     switch (opt) {
     case 'f':
       option_file_format = optarg;
@@ -105,17 +105,17 @@ int main(int argc, char *argv[])
     case 'i':
       iface = optarg;
       break;
-    case 'n':
-      // one -n: log all SSIDs even if no GPS data so with gps coord. as 0.0
-      // two -n (-n -n): log all SSIDs with no gps coord. (0.0) and disable the use of gpsd
-      option_gps++;
-      break;
     case 'o':
       option_file_name = optarg;
       break;
     case 'V':
       printf("%s %s\nCopyright © 2020 solsTice d'Hiver\nLicense GPLv3+: GNU GPL version 3\n", NAME, VERSION);
       exit(EXIT_SUCCESS);
+      break;
+    case 'z':
+      // one -z: log all SSIDs even if no GPS data so with gps coord. as 0.0
+      // two -z (-z -z): log all SSIDs with no gps coord. (0.0) and disable the use of gpsd
+      option_gps++;
       break;
     case '?':
       usage();

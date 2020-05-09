@@ -23,13 +23,13 @@ You can select to choose the *csv* format by using `-f csv`.
 
 The complete usage:
 
-    Usage: ssid-logger -i IFACE [-f csv|sqlite3] [-o FILENAME] [-n] [-n] [-V]
+    Usage: ssid-logger -i IFACE [-f csv|sqlite3] [-o FILENAME] [-V] [-z] [-z]
       -i IFACE        interface to use
       -f csv|sqlite3  output format to use (default sqlite3)
       -o FILENAME     explicitly set the output filename
-      -n              log ssid even if no gps coordinates are available
-      -nn or -n -n    don't try to use gpsd and log all ssids
       -V              print version and exit
+      -z              log ssid even if no gps coordinates are available
+      -zz or -z -z    don't use gpsd and log all ssids
 
 ## Dependencies
 *ssid-logger* depends on the following libraries:
