@@ -1,7 +1,7 @@
 /*
-worker thread that will process the queue filled by process_packet()
+ssid-logger is a simple software to log SSID you encouter in your vicinity
+Copyright © 2020 solsTiCe d'Hiver
 */
-
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
@@ -40,6 +40,7 @@ void free_ap_info(struct ap_info *ap)
   ap = NULL;
 }
 
+// worker thread that will process the queue filled by process_packet()
 void *process_queue(void *args)
 {
   pthread_mutex_init(&mutex_queue, NULL);

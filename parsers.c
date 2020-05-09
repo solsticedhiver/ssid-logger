@@ -1,3 +1,7 @@
+/*
+ssid-logger is a simple software to log SSID you encouter in your vicinity
+Copyright © 2020 solsTiCe d'Hiver
+*/
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>

@@ -1,5 +1,6 @@
 /*
-helper thread that repeatedly retrieve gps coord. from the gpsd daemon
+ssid-logger is a simple software to log SSID you encouter in your vicinity
+Copyright © 2020 solsTiCe d'Hiver
 */
 #include <gps.h>
 #include <stdio.h>
@@ -58,6 +59,7 @@ static inline int update_gloc(struct gps_data_t gps_data)
   return 0;
 }
 
+// helper thread that repeatedly retrieve gps coord. from the gpsd daemon
 void *retrieve_gps_data(void *arg)
 {
   struct gps_data_t gps_data;

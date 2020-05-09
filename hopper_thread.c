@@ -1,6 +1,6 @@
 /*
-thread whose sole purpose is to switch the channel of the interface card
-following the predefined pattern set in CHANNELS
+ssid-logger is a simple software to log SSID you encouter in your vicinity
+Copyright © 2020 solsTiCe d'Hiver
 */
 #include <net/if.h>
 #include <netlink/netlink.h>
@@ -21,6 +21,8 @@ void cleanup_socket(void *arg){
   return;
 }
 
+// thread whose sole purpose is to switch the channel of the interface card
+// following the predefined pattern set in CHANNELS
 void *hop_channel(void *arg)
 {
   // based on https://stackoverflow.com/a/53602395/283067
