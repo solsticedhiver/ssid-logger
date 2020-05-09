@@ -279,6 +279,8 @@ int main(int argc, char *argv[])
 
   struct sigaction act;
   act.sa_handler = sigint_handler;
+  act.sa_flags = 0;
+  sigemptyset(&act.sa_mask);
   // catch CTRL+C to break loop cleanly
   sigaction(SIGINT, &act, NULL);
   // catch quit signal to flush data to file on disk
