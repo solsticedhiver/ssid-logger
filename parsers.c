@@ -182,7 +182,6 @@ struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, i
 char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
                             bool ess, bool privacy, bool wps)
 {
-  // TODO: rewrite this so that there is safeguard not to overflow authmode string
   char authmode[1024];
   authmode[0] = '\0';           // this is needed for strcat to work
   uint8_t last_byte;
