@@ -33,7 +33,7 @@ static inline int update_gloc(struct gps_data_t gps_data)
   // update global gloc gps location
   gloc.lat = gps_data.fix.latitude;
   gloc.lon = gps_data.fix.longitude;
-  #if GPS_VERSION == 1
+  #if GPSD_API_MAJOR_VERSION >= 9
   gloc.alt = isnan(gps_data.fix.altMSL) ? 0.0 : gps_data.fix.altMSL;
   gloc.ftime = gps_data.fix.time;
   if (!isnan(gps_data.fix.eph)) {
@@ -95,24 +95,30 @@ void *retrieve_gps_data(void *arg)
 
   pthread_mutex_init(&mutex_gloc, NULL);
 
+  int status, ret;
+
   while (1) {
     gloc.lat = gloc.lon = gloc.alt = gloc.acc = 0.0;
     // wait at most for 1 second to receive data
     if (gps_waiting(&gps_data, 1000000)) {
-      #if GPS_VERSION == 1
-      if (gps_read(&gps_data, NULL, 0) > 0) {
+      #if GPSD_API_MAJOR_VERSION >= 7
+      ret = gps_read(&gps_data, NULL, 0);
+        #if GPSD_API_MAJOR_VERSION >= 10
+        status = gps_data.fix.status;
+        #else
+        status = gps_data.status;
+        #endif
       #else
-      if (gps_read(&gps_data) > 0) {
+      ret = gps_read(&gps_data);
+      status = gps_data.status;
       #endif
-        if (gps_data.set && (gps_data.status == STATUS_FIX)
-            && (gps_data.fix.mode == MODE_2D
-                || gps_data.fix.mode == MODE_3D)
-            && !isnan(gps_data.fix.latitude)
-            && !isnan(gps_data.fix.longitude)) {
-          pthread_mutex_lock(&mutex_gloc);
-          update_gloc(gps_data);
-          pthread_mutex_unlock(&mutex_gloc);
-        }
+      if ((ret > 0) && gps_data.set && (status == STATUS_FIX)
+          && ((gps_data.fix.mode == MODE_2D) || (gps_data.fix.mode == MODE_3D ))
+          && !isnan(gps_data.fix.latitude)
+          && !isnan(gps_data.fix.longitude)) {
+        pthread_mutex_lock(&mutex_gloc);
+        update_gloc(gps_data);
+        pthread_mutex_unlock(&mutex_gloc);
       }
     }
     usleep(500000);
