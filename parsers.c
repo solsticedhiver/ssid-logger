@@ -10,6 +10,8 @@
 #include "gps_thread.h"
 #include "logger_thread.h"
 
+#define MAX_AUTHMODE_LEN 192
+
 //static const char *CIPHER_SUITE_SELECTORS[] =
 //    { "Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP" };
 
@@ -182,10 +184,10 @@ struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, i
 char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
                             bool ess, bool privacy, bool wps)
 {
-  char authmode[1024];
+  char authmode[MAX_AUTHMODE_LEN];
   authmode[0] = '\0';           // this is needed for strcat to work
   uint8_t last_byte;
-  size_t length = 1024;
+  size_t length = MAX_AUTHMODE_LEN;
 
   if (msw != NULL) {
     strncat(authmode, "[WPA-", length);
@@ -268,12 +270,12 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
     length -= 5;
   }
 
-  return strndup(authmode, 1024-length);
+  return strndup(authmode, MAX_AUTHMODE_LEN-length);
 }
 
 char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
 {
-  char tmp[1024], tail[128], firstseen[21];
+  char tmp[384], tail[64], firstseen[21];
   char *authmode, *ap_str;
 
   authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
@@ -282,20 +284,19 @@ char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
     gloc.lon, gloc.alt, gloc.acc);
 
   tmp[0] = '\0';
-  strcat(tmp, ap.bssid);
+  strncat(tmp, ap.bssid, 18);
   strcat(tmp, ",");
-  strcat(tmp, ap.ssid);
+  strncat(tmp, ap.ssid, 64); // that's the double allowed size by the 802.11 standard
   strcat(tmp, ",");
-  strcat(tmp, authmode);
+  strncat(tmp, authmode, MAX_AUTHMODE_LEN);
   strcat(tmp, ",");
-  strcat(tmp, firstseen);
+  strncat(tmp, firstseen, 21);
   strcat(tmp, ",");
-  strcat(tmp, tail);
+  strncat(tmp, tail, 55);
+  free(authmode);
 
   ap_str = malloc(strlen(tmp)+1);
   strncpy(ap_str, tmp, strlen(tmp)+1);
-
-  free(authmode);
 
   return ap_str;
 
