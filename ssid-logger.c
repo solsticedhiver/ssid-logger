@@ -34,6 +34,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "parsers.h"
 #include "logger_thread.h"
 #include "gps_thread.h"
+#include "blink_thread.h"
 #include "db.h"
 
 #include "config.h"
@@ -44,7 +45,9 @@ queue_t *queue;                 // queue to hold parsed ap infos
 pthread_t hopper;
 pthread_t logger;
 pthread_t gps;
+pthread_t blink;
 int gps_thread_init_result = 0;
+bool is_gps_got_a_fix = false;
 pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_gloc = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_gtr = PTHREAD_MUTEX_INITIALIZER;
@@ -297,6 +300,14 @@ int main(int argc, char *argv[])
   }
   pthread_mutex_unlock(&mutex_gtr);
 
+  // start the helper blink thread
+  if (pthread_create(&blink, NULL, blink_forever, NULL)) {
+    fprintf(stderr, "Error creating blink thread\n");
+    ret = EXIT_FAILURE;
+    goto blink_failure;
+  }
+  pthread_detach(blink);
+
   struct sigaction act;
   act.sa_handler = sigint_handler;
   act.sa_flags = 0;
@@ -347,6 +358,9 @@ int main(int argc, char *argv[])
     commit_txn(db);
     sqlite3_close(db);
   }
+
+blink_failure:
+  pthread_cancel(blink);
 
 gps_init_failure:
   pthread_mutex_destroy(&mutex_gtr);

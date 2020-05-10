@@ -6,7 +6,8 @@ configure_file(input : 'config.h.in',
                output : 'config.h',
                configuration : conf_data)
 
-src = [ 'ssid-logger.c', 'hopper_thread.c', 'parsers.c', 'queue.c', 'radiotap.c', 'logger_thread.c', 'gps_thread.c', 'db.c']
+src = [ 'ssid-logger.c', 'hopper_thread.c', 'parsers.c', 'queue.c', 'radiotap.c',
+  'logger_thread.c', 'gps_thread.c', 'db.c', 'blink_thread.c']
 pcap_dep = dependency('pcap', version: '>1.0')
 pthread_dep = dependency('threads')
 nl_dep = dependency('libnl-3.0')
