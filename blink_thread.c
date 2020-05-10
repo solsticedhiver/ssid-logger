@@ -7,6 +7,7 @@
 #define WAIT_FLASH_ON 500000 // in microseconds
 #define LONG_WAIT_BETWEEN_FLASH 5 // in seconds
 #define SHORT_WAIT_BETWEEN_FLASH 1 // in seconds
+#define MAX_FAILED 10
 
 bool is_gps_got_a_fix;
 
@@ -41,18 +42,20 @@ void cleanup_led_state(void *arg)
 void *blink_forever(void *arg)
 {
   unsigned int wait = LONG_WAIT_BETWEEN_FLASH;
+  int failed = 0;
 
   // push clean up code when thread is cancelled
   pthread_cleanup_push(cleanup_led_state, NULL);
 
   while (1) {
-    turn_led_on();
+    failed += turn_led_on();
     usleep(WAIT_FLASH_ON);
-    turn_led_off();
+    failed += turn_led_off();
     sleep(wait);
     if (is_gps_got_a_fix) wait = SHORT_WAIT_BETWEEN_FLASH;
+    if (failed < MAX_FAILED*-1) break; // give up if too much error
   }
-  
+
   pthread_cleanup_pop(1);
-  return 0;
+  return NULL;
 }
