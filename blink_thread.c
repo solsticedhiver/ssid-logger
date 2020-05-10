@@ -39,6 +39,12 @@ void cleanup_led_state(void *arg)
   turn_led_off();
 }
 
+/*
+ * will blink the led every LONG_WAIT_BETWEEN_FLASH seconds until the gps fix is acquired
+ * then will blink every SHORT_WAIT_BETWEEN_FLASH seconds
+ * by default, blink every 5 seconds, then every second
+ * abort if MAX_FAILED errors is reached
+ */
 void *blink_forever(void *arg)
 {
   unsigned int wait = LONG_WAIT_BETWEEN_FLASH;
@@ -53,7 +59,7 @@ void *blink_forever(void *arg)
     failed += turn_led_off();
     sleep(wait);
     if (is_gps_got_a_fix) wait = SHORT_WAIT_BETWEEN_FLASH;
-    if (failed < MAX_FAILED*-1) break; // give up if too much error
+    if (failed < MAX_FAILED*-1) break; // give up if too many errors
   }
 
   pthread_cleanup_pop(1);

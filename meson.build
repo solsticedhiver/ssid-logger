@@ -6,14 +6,19 @@ configure_file(input : 'config.h.in',
                output : 'config.h',
                configuration : conf_data)
 
-src = [ 'ssid-logger.c', 'hopper_thread.c', 'parsers.c', 'queue.c', 'radiotap.c',
-  'logger_thread.c', 'gps_thread.c', 'db.c', 'blink_thread.c']
+src = ['ssid-logger.c', 'hopper_thread.c', 'parsers.c', 'queue.c', 'radiotap.c',
+  'logger_thread.c', 'gps_thread.c', 'db.c']
 pcap_dep = dependency('pcap', version: '>1.0')
 pthread_dep = dependency('threads')
 nl_dep = dependency('libnl-3.0')
 genl_dep = dependency('libnl-genl-3.0')
 gps_dep = dependency('libgps')
 sqlite3_dep = dependency('sqlite3')
+
+if get_option('blink_rpi0_led')
+  add_project_arguments('-DBLINK_LED=1', language:'c')
+  src += ['blink_thread.c']
+endif
 
 executable('ssid-logger', src,
   dependencies: [pcap_dep, pthread_dep, nl_dep, genl_dep, gps_dep, sqlite3_dep],

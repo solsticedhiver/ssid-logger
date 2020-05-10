@@ -34,7 +34,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "parsers.h"
 #include "logger_thread.h"
 #include "gps_thread.h"
+#ifdef BLINK_LED
 #include "blink_thread.h"
+#endif
 #include "db.h"
 
 #include "config.h"
@@ -300,6 +302,7 @@ int main(int argc, char *argv[])
   }
   pthread_mutex_unlock(&mutex_gtr);
 
+  #ifdef BLINK_LED
   // start the helper blink thread
   if (pthread_create(&blink, NULL, blink_forever, NULL)) {
     fprintf(stderr, "Error creating blink thread\n");
@@ -307,6 +310,7 @@ int main(int argc, char *argv[])
     goto blink_failure;
   }
   pthread_detach(blink);
+  #endif
 
   struct sigaction act;
   act.sa_handler = sigint_handler;
@@ -359,8 +363,10 @@ int main(int argc, char *argv[])
     sqlite3_close(db);
   }
 
+#ifdef BLINK_LED
 blink_failure:
   pthread_cancel(blink);
+#endif
 
 gps_init_failure:
   pthread_mutex_destroy(&mutex_gtr);

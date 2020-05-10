@@ -1,0 +1,1 @@
+option('blink_rpi0_led', type: 'boolean', value: false, description: 'blink the led on rpi0')
