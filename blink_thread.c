@@ -4,12 +4,11 @@
 #include <pthread.h>
 
 #define BRIGHTNESS "/sys/class/leds/led0/brightness"
-#define WAIT_FLASH_ON 500000 // in microseconds
-#define LONG_WAIT_BETWEEN_FLASH 5 // in seconds
-#define SHORT_WAIT_BETWEEN_FLASH 1 // in seconds
-#define MAX_FAILED 10
+#define FLASH_DURATION 500000 // in microseconds
+#define LONG_WAIT 5 // in seconds
+#define SHORT_WAIT 1 // in seconds
 
-bool is_gps_got_a_fix;
+bool has_gps_got_fix;
 
 int static inline echo_value(const char *path, int value)
 {
@@ -40,26 +39,37 @@ void cleanup_led_state(void *arg)
 }
 
 /*
- * will blink the led every LONG_WAIT_BETWEEN_FLASH seconds until the gps fix is acquired
- * then will blink every SHORT_WAIT_BETWEEN_FLASH seconds
+ * will blink the led every LONG_WAIT seconds until the gps fix is acquired
+ * then will blink every SHORT_WAIT seconds
  * by default, blink every 5 seconds, then every second
- * abort if MAX_FAILED errors is reached
+ *
+ * for this to be visible and effective, one needs to use in /boot/config.txt
+ * dtparam=act_led_trigger=none
+ * dtparam=act_led_activelow=on
  */
 void *blink_forever(void *arg)
 {
-  unsigned int wait = LONG_WAIT_BETWEEN_FLASH;
-  int failed = 0;
+  unsigned int wait = LONG_WAIT;
 
+  if (access(BRIGHTNESS, F_OK) == -1) {
+    // abort because the file does not exist
+    fprintf(stderr, "Error: %s does not exist\n", BRIGHTNESS);
+    return NULL;
+  }
+  if (access(BRIGHTNESS, W_OK) == -1) {
+    // abort because the file is not writable
+    fprintf(stderr, "Error: can't write to %s\n", BRIGHTNESS);
+    return NULL;
+  }
   // push clean up code when thread is cancelled
   pthread_cleanup_push(cleanup_led_state, NULL);
 
   while (1) {
-    failed += turn_led_on();
-    usleep(WAIT_FLASH_ON);
-    failed += turn_led_off();
+    turn_led_on();
+    usleep(FLASH_DURATION);
+    turn_led_off();
     sleep(wait);
-    if (is_gps_got_a_fix) wait = SHORT_WAIT_BETWEEN_FLASH;
-    if (failed < MAX_FAILED*-1) break; // give up if too many errors
+    if (has_gps_got_fix) wait = SHORT_WAIT;
   }
 
   pthread_cleanup_pop(1);

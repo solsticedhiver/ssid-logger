@@ -49,7 +49,7 @@ pthread_t logger;
 pthread_t gps;
 pthread_t blink;
 int gps_thread_init_result = 0;
-bool is_gps_got_a_fix = false;
+bool has_gps_got_fix = false;
 pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_gloc = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_gtr = PTHREAD_MUTEX_INITIALIZER;

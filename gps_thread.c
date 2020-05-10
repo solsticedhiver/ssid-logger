@@ -17,7 +17,7 @@ Copyright © 2020 solsTiCe d'Hiver
 int gps_thread_init_result;
 pthread_mutex_t mutex_gtr;
 pthread_cond_t cv_gtr;
-bool is_gps_got_a_fix;
+bool has_gps_got_fix;
 
 void cleanup_gps_data(void *arg)
 {
@@ -120,7 +120,7 @@ void *retrieve_gps_data(void *arg)
           && !isnan(gps_data.fix.latitude)
           && !isnan(gps_data.fix.longitude)) {
         pthread_mutex_lock(&mutex_gloc);
-        if (!is_gps_got_a_fix) is_gps_got_a_fix = true;
+        if (!has_gps_got_fix) has_gps_got_fix = true;
         update_gloc(gps_data);
         pthread_mutex_unlock(&mutex_gloc);
       }
