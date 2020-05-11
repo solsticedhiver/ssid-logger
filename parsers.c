@@ -59,8 +59,7 @@ struct cipher_suite *parse_cipher_suite(uint8_t * start)
   cs->akm_cipher_suite = malloc(akmsc * sizeof(uint8_t *));
   for (int i = 0; i < akmsc; i++) {
     cs->akm_cipher_suite[i] = malloc(4 * sizeof(uint8_t));
-    memcpy(cs->akm_cipher_suite[i], start + 4 + 2 + pcsc * 4 + 2 + i * 4,
-           4);
+    memcpy(cs->akm_cipher_suite[i], start + 4 + 2 + pcsc * 4 + 2 + i * 4, 4);
   }
   return cs;
 }
@@ -207,24 +206,31 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
       length -= 4;
       break;
     }
+    bool first = true;
     for (int i = 0; i < msw->pairwise_cipher_count; i++) {
       last_byte = (uint8_t) msw->pairwise_cipher_suite[i][3];
+      if (!first) {
+        strncat(authmode, "+", length);
+        length -= 1;
+      } else {
+        first = false;
+      }
       switch (last_byte) {
       case 2:
-        strncat(authmode, "+TKIP", length);
-        length -= 5;
+        strncat(authmode, "TKIP", length);
+        length -= 4;
         break;
       case 4:
         strncat(authmode, "CCMP", length);
         length -= 4;
         break;
       case 1:
-        strncat(authmode, "+WEP-40", length);
-        length -= 7;
+        strncat(authmode, "WEP-40", length);
+        length -= 6;
         break;
       case 5:
-        strncat(authmode, "+WEP-104", length);
-        length -= 8;
+        strncat(authmode, "WEP-104", length);
+        length -= 7;
         break;
       }
     }
@@ -245,16 +251,31 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
       length -= 4;
       break;
     }
+    bool first = true;
     for (int i = 0; i < rsn->pairwise_cipher_count; i++) {
       last_byte = (uint8_t) rsn->pairwise_cipher_suite[i][3];
+      if (!first) {
+        strncat(authmode, "+", length);
+        length -= 1;
+      } else {
+        first = false;
+      }
       switch (last_byte) {
       case 2:
-        strncat(authmode, "+TKIP", length);
-        length -= 5;
+        strncat(authmode, "TKIP", length);
+        length -= 4;
         break;
       case 4:
         strncat(authmode, "CCMP", length);
         length -= 4;
+        break;
+      case 1:
+        strncat(authmode, "WEP-40", length);
+        length -= 6;
+        break;
+      case 5:
+        strncat(authmode, "WEP-104", length);
+        length -= 7;
         break;
       }
     }
