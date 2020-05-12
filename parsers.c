@@ -286,12 +286,12 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
     strncat(authmode, "[WEP]", length);
     length -= 5;
   }
-  if (wps) {
-    strncat(authmode, "[WPS]", length);
-    length -= 5;
-  }
   if (ess) {
     strncat(authmode, "[ESS]", length);
+    length -= 5;
+  }
+  if (wps) {
+    strncat(authmode, "[WPS]", length);
     length -= 5;
   }
 
