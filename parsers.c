@@ -130,7 +130,7 @@ struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, i
   // parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
   // BSSID
   const uint8_t *bssid_addr = packet + offset + 2 + 2 + 6 + 6;   // FC + duration + DA + SA
-  sprintf(ap->bssid, "%02X:%02X:%02X:%02X:%02X:%02X", bssid_addr[0],
+  sprintf(ap->bssid, "%02x:%02x:%02x:%02x:%02x:%02x", bssid_addr[0],
     bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4], bssid_addr[5]);
 
   // Capability Info
