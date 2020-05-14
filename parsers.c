@@ -6,6 +6,7 @@ Copyright © 2020 solsTiCe d'Hiver
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <time.h>
 #include <math.h>
 
@@ -18,6 +19,47 @@ Copyright © 2020 solsTiCe d'Hiver
 
 //static const char *CIPHER_SUITE_SELECTORS[] =
 //    { "Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP" };
+
+// from https://stackoverflow.com/a/779960/283067
+char *str_replace(const char *orig, const char *rep, const char *with)
+{
+    char *result;
+    char *ins;
+    char *tmp;
+    int len_rep;
+    int len_with;
+    int len_front;
+    int count;
+
+    if (!orig || !rep)
+        return NULL;
+    len_rep = strlen(rep);
+    if (len_rep == 0)
+        return NULL;
+    if (!with)
+        with = "";
+    len_with = strlen(with);
+
+    ins = (char *)orig;
+    for (count = 0; (tmp = strstr(ins, rep)); ++count) {
+        ins = tmp + len_rep;
+    }
+
+    tmp = result = malloc(strlen(orig) + (len_with - len_rep) * count + 1);
+
+    if (!result)
+        return NULL;
+
+    while (count--) {
+        ins = strstr(orig, rep);
+        len_front = ins - orig;
+        tmp = strncpy(tmp, orig, len_front) + len_front;
+        tmp = strcpy(tmp, with) + len_with;
+        orig += len_front + len_rep;
+    }
+    strcpy(tmp, orig);
+    return result;
+}
 
 void free_cipher_suite(struct cipher_suite *cs)
 {
@@ -191,6 +233,7 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
   authmode[0] = '\0';           // this is needed for strcat to work
   uint8_t last_byte;
   size_t length = MAX_AUTHMODE_LEN;
+  bool is_eap_ft = false, is_psk_ft = false, add_pc = false;
 
   if (msw != NULL) {
     strncat(authmode, "[WPA-", length);
@@ -238,49 +281,86 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
     length -= 1;
   }
   if (rsn != NULL) {
-    strncat(authmode, "[WPA2-", length);
+    strncat(authmode, "[", length);
+    length -= 1;
+    strncat(authmode, "WPA2-", length);
     length -= 6;
-    last_byte = (uint8_t) rsn->akm_cipher_suite[0][3];
-    switch (last_byte) {
-    case 1:
-      strncat(authmode, "EAP-", length);
-      length -= 4;
-      break;
-    case 2:
-      strncat(authmode, "PSK-", length);
-      length -= 4;
-      break;
-    }
-    bool first = true;
-    for (int i = 0; i < rsn->pairwise_cipher_count; i++) {
-      last_byte = (uint8_t) rsn->pairwise_cipher_suite[i][3];
-      if (!first) {
-        strncat(authmode, "+", length);
-        length -= 1;
-      } else {
-        first = false;
-      }
+    for (int j=0; j<rsn->akm_cipher_count; j++) {
+      last_byte = (uint8_t) rsn->akm_cipher_suite[j][3];
       switch (last_byte) {
-      case 2:
-        strncat(authmode, "TKIP", length);
+      case 1:
+        strncat(authmode, "EAP-", length);
+        add_pc = true;
         length -= 4;
+        break;
+      case 2:
+        strncat(authmode, "PSK-", length);
+        add_pc = true;
+        length -= 4;
+        break;
+      case 3  :
+        is_eap_ft = true;
         break;
       case 4:
-        strncat(authmode, "CCMP", length);
-        length -= 4;
-        break;
-      case 1:
-        strncat(authmode, "WEP-40", length);
-        length -= 6;
+        is_psk_ft = true;
         break;
       case 5:
-        strncat(authmode, "WEP-104", length);
-        length -= 7;
+        strncat(authmode, "EAP-SHA256-", length);
+        add_pc = true;
+        length -= 11;
         break;
+      case 6:
+        strncat(authmode, "PSK-SHA256-", length);
+        add_pc = true;
+        length -= 11;
+        break;
+      }
+      if (add_pc) {
+        add_pc = false;
+        bool first_pc = true;
+        for (int i = 0; i < rsn->pairwise_cipher_count; i++) {
+          last_byte = (uint8_t) rsn->pairwise_cipher_suite[i][3];
+          if (!first_pc) {
+            strncat(authmode, "+", length);
+            length -= 1;
+          } else {
+            first_pc = false;
+          }
+          switch (last_byte) {
+          case 2:
+            strncat(authmode, "TKIP", length);
+            length -= 4;
+            break;
+          case 4:
+            strncat(authmode, "CCMP", length);
+            length -= 4;
+            break;
+          case 1:
+            strncat(authmode, "WEP-40", length);
+            length -= 6;
+            break;
+          case 5:
+            strncat(authmode, "WEP-104", length);
+            length -= 7;
+            break;
+          }
+        }
       }
     }
     strncat(authmode, "]", length);
     length -= 1;
+  }
+  if (is_eap_ft) {
+    char *tmp = str_replace(authmode, "WPA2-EAP-","WPA2-EAP+FT/EAP-");
+    strcpy(authmode, tmp);
+    free(tmp);
+    length -= 7;
+  }
+  if (is_psk_ft) {
+    char *tmp = str_replace(authmode, "WPA2-PSK-","WPA2-PSK+FT/PSK-");
+    strcpy(authmode, tmp);
+    free(tmp);
+    length -= 7;
   }
   if (!rsn && !msw && privacy) {
     strncat(authmode, "[WEP]", length);
