@@ -13,7 +13,7 @@
 #include <unistd.h>
 
 #include "../parsers.h"
-#include "../logger_thread.h"
+#include "../ap_info.h"
 #include "../gps_thread.h"
 #include "../queue.h"
 
@@ -52,7 +52,7 @@ const char *beacons[] = {
 };
 
 queue_t queue; // not used
-struct gps_loc gloc = { .lat=0.0, .lon=0.0, .alt=0.0, .acc=0.0, .ftime={.tv_sec=0} };
+struct gps_loc gloc;
 int pkt_count = 0, *pkt_len = NULL;
 uint8_t **pkts = NULL;
 
@@ -69,6 +69,8 @@ static void test_parse_beacon_frame(void **state) {
   struct pcap_pkthdr *header;
   const uint8_t *pkt;
   int ret, count = 0;
+  gloc.lat=0.0; gloc.lon=0.0; gloc.alt=0.0; gloc.acc=0.0; gloc.ftime.tv_sec=0;
+
   while ((ret = pcap_next_ex(handle, &header, &pkt) != PCAP_ERROR_BREAK)) {
     uint16_t freq;
     int8_t rssi;

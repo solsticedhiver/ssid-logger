@@ -38,6 +38,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "blink_thread.h"
 #endif
 #include "db.h"
+#include "ap_info.h"
 
 #include "config.h"
 

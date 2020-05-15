@@ -14,10 +14,12 @@ Copyright © 2020 solsTiCe d'Hiver
 
 #include "gps_thread.h"
 
-int gps_thread_init_result;
-pthread_mutex_t mutex_gtr;
-pthread_cond_t cv_gtr;
-bool has_gps_got_fix;
+extern int gps_thread_init_result;
+extern pthread_mutex_t mutex_gtr;
+extern pthread_mutex_t mutex_gloc;
+extern pthread_cond_t cv_gtr;
+extern bool has_gps_got_fix;
+struct gps_loc gloc;
 
 void cleanup_gps_data(void *arg)
 {
@@ -64,7 +66,6 @@ static inline int update_gloc(struct gps_data_t gps_data)
 void *retrieve_gps_data(void *arg)
 {
   struct gps_data_t gps_data;
-  pthread_mutex_t mutex_gloc;
   enum _option_gps *option_gps;
 
   option_gps = (enum _option_gps *)arg;
@@ -95,8 +96,6 @@ void *retrieve_gps_data(void *arg)
 
   // push clean up code when thread is cancelled
   pthread_cleanup_push(cleanup_gps_data, (void *) (&gps_data));
-
-  pthread_mutex_init(&mutex_gloc, NULL);
 
   int status, ret;
 

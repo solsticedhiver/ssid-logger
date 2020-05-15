@@ -18,7 +18,7 @@ struct gps_loc {
   double acc;
   struct timespec ctime;
   struct timespec ftime;
-} gloc;
+};
 
 void *retrieve_gps_data(void *arg);
 

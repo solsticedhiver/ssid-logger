@@ -13,7 +13,7 @@ Copyright © 2020 solsTiCe d'Hiver
 #include "radiotap_iter.h"
 #include "parsers.h"
 #include "gps_thread.h"
-#include "logger_thread.h"
+#include "ap_info.h"
 
 #define MAX_AUTHMODE_LEN 192
 

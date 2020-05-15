@@ -8,7 +8,7 @@ Copyright © 2020 solsTiCe d'Hiver
 #include <string.h>
 #include <math.h>
 
-#include "logger_thread.h"
+#include "ap_info.h"
 #include "gps_thread.h"
 #include "parsers.h"
 

@@ -17,34 +17,22 @@ Copyright © 2020 solsTiCe d'Hiver
 #include "logger_thread.h"
 #include "gps_thread.h"
 #include "db.h"
+#include "ap_info.h"
 
-pthread_cond_t cv;
-pthread_mutex_t mutex_queue;
-pthread_mutex_t mutex_gloc;
+extern pthread_cond_t cv;
+extern pthread_mutex_t mutex_queue;
+extern pthread_mutex_t mutex_gloc;
 extern queue_t *queue;
-struct gps_loc gloc;            // global variable to hold retrieved gps data
-sqlite3 *db;
+extern struct gps_loc gloc;            // global variable to hold retrieved gps data
+extern sqlite3 *db;
 struct timespec start_ts_cache;
-bool format_csv;
-enum _option_gps option_gps;
-FILE *file_ptr;
-
-void free_ap_info(struct ap_info *ap)
-{
-  if (ap->rsn != NULL)
-    free_cipher_suite(ap->rsn);
-  if (ap->msw != NULL)
-    free_cipher_suite(ap->msw);
-  free(ap->ssid);
-  free(ap);
-  ap = NULL;
-}
+extern bool format_csv;
+extern enum _option_gps option_gps;
+extern FILE *file_ptr;
 
 // worker thread that will process the queue filled by process_packet()
 void *process_queue(void *args)
 {
-  pthread_mutex_init(&mutex_queue, NULL);
-  pthread_mutex_init(&mutex_gloc, NULL);
   struct ap_info *ap;
   struct ap_info **aps;
   int qs;
