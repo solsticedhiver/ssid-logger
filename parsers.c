@@ -391,7 +391,9 @@ char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
   tmp[0] = '\0';
   strncat(tmp, ap.bssid, 18);
   strcat(tmp, ",");
-  strncat(tmp, ap.ssid, 64); // that's the double allowed size by the 802.11 standard
+  if (ap.ssid_len > 0) {
+    strncat(tmp, ap.ssid, 64); // that's the double allowed size by the 802.11 standard
+  }
   strcat(tmp, ",");
   strncat(tmp, authmode, MAX_AUTHMODE_LEN);
   strcat(tmp, ",");
