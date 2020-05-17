@@ -11,6 +11,9 @@ Copyright © 2020 solsTiCe d'Hiver
 #include <stdbool.h>
 #include <pthread.h>
 #include <time.h>
+#ifdef HAS_PRCTL_H
+#include <sys/prctl.h>
+#endif
 
 #include "gps_thread.h"
 
@@ -67,6 +70,11 @@ void *retrieve_gps_data(void *arg)
 {
   struct gps_data_t gps_data;
   enum _option_gps *option_gps;
+
+  #ifdef HAS_PRCTL_H
+  // name our thread; using prctl instead of pthread_setname_np to avoid defining _GNU_SOURCE
+  prctl(PR_SET_NAME, "logger");
+  #endif
 
   option_gps = (enum _option_gps *)arg;
   if (*option_gps == GPS_LOG_ZERO) {

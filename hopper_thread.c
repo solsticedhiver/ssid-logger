@@ -10,6 +10,9 @@ Copyright © 2020 solsTiCe d'Hiver
 #include <stdbool.h>
 #include <unistd.h>
 #include <pthread.h>
+#ifdef HAS_PRCTL_H
+#include <sys/prctl.h>
+#endif
 
 #include "hopper_thread.h"
 
@@ -31,6 +34,11 @@ void *hop_channel(void *arg)
   uint32_t freq = 2412 + (CHANNELS[0] - 1) * 5;
   size_t chan_number = sizeof(CHANNELS) / sizeof(uint8_t);
   struct nl_msg *msg;
+
+  #ifdef HAS_PRCTL_H
+  // name our thread; using prctl instead of pthread_setname_np to avoid defininf _GNU_SOURCE
+  prctl(PR_SET_NAME, "channel_hopper");
+  #endif
 
   // Create the socket and connect to it
   struct nl_sock *sckt = nl_socket_alloc();

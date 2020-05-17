@@ -11,6 +11,9 @@ Copyright © 2020 solsTiCe d'Hiver
 #include <time.h>
 #include <stdbool.h>
 #include <unistd.h>
+#ifdef HAS_PRCTL_H
+#include <sys/prctl.h>
+#endif
 
 #include "parsers.h"
 #include "queue.h"
@@ -37,6 +40,11 @@ void *process_queue(void *args)
   struct ap_info **aps;
   int qs;
   struct timespec now;
+
+  #ifdef HAS_PRCTL_H
+  // name our thread; using prctl instead of pthread_setname_np to avoid defining _GNU_SOURCE
+  prctl(PR_SET_NAME, "logger");
+  #endif
 
   while (true) {
     pthread_mutex_lock(&mutex_queue);

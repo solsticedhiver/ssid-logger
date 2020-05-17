@@ -2,6 +2,9 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <pthread.h>
+#ifdef HAS_PRCTL_H
+#include <sys/prctl.h>
+#endif
 
 #define BRIGHTNESS "/sys/class/leds/led0/brightness"
 #define FLASH_DURATION 500000 // in microseconds
@@ -61,6 +64,12 @@ void *blink_forever(void *arg)
     fprintf(stderr, "Error: can't write to %s\n", BRIGHTNESS);
     return NULL;
   }
+
+  #ifdef HAS_PRCTL_H
+  // name our thread; using prctl instead of pthread_setname_np to avoid defining _GNU_SOURCE
+  prctl(PR_SET_NAME, "logger");
+  #endif
+
   // push clean up code when thread is cancelled
   pthread_cleanup_push(cleanup_led_state, NULL);
 

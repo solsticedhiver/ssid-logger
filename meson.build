@@ -1,5 +1,7 @@
 project('ssid-logger', 'c', version: '0.1.5')
 
+cc = meson.get_compiler('c')
+
 conf_data = configuration_data()
 conf_data.set('version', '0.1.5')
 configure_file(input : 'config.h.in',
@@ -19,6 +21,10 @@ cmocka_dep = dependency('cmocka', required: false)
 if get_option('blink_rpi0_led')
   add_project_arguments('-DBLINK_LED=1', language:'c')
   src += ['blink_thread.c']
+endif
+
+if cc.has_header('sys/prctl.h')
+  add_project_arguments('-DHAS_PRCTL_H', language: 'c')
 endif
 
 executable('ssid-logger', src,
