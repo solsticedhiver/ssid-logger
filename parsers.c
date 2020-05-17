@@ -147,7 +147,7 @@ int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq, int8_t * r
 
   *freq = 0;
   *rssi = 0;
-  // iterate through radiotap filed and look for frequency and rssi
+  // iterate through radiotap fields and look for frequency and rssi
   while (!(err = ieee80211_radiotap_iterator_next(&iter))) {
     if (iter.this_arg_index == IEEE80211_RADIOTAP_CHANNEL) {
       assert(iter.this_arg_size == 4);  // XXX: why ?
@@ -402,8 +402,7 @@ char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
   strncat(tmp, tail, 55);
   free(authmode);
 
-  ap_str = malloc(strlen(tmp)+1);
-  strncpy(ap_str, tmp, strlen(tmp)+1);
+  ap_str = strdup(tmp);
 
   return ap_str;
 

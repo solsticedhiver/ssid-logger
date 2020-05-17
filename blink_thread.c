@@ -8,7 +8,7 @@
 #define LONG_WAIT 5 // in seconds
 #define SHORT_WAIT 1 // in seconds
 
-bool has_gps_got_fix;
+extern bool has_gps_got_fix;
 
 int static inline echo_value(const char *path, int value)
 {
@@ -64,7 +64,7 @@ void *blink_forever(void *arg)
   // push clean up code when thread is cancelled
   pthread_cleanup_push(cleanup_led_state, NULL);
 
-  while (1) {
+  while (true) {
     turn_led_on();
     usleep(FLASH_DURATION);
     turn_led_off();

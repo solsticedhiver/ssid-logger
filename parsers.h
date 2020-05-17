@@ -19,15 +19,15 @@ struct cipher_suite {
   uint8_t **akm_cipher_suite;
 };
 
-extern void free_cipher_suite(struct cipher_suite *cs);
+void free_cipher_suite(struct cipher_suite *cs);
 
-extern struct cipher_suite *parse_cipher_suite(uint8_t * start);
+struct cipher_suite *parse_cipher_suite(uint8_t * start);
 
-extern int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq, int8_t * rssi);
+int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq, int8_t * rssi);
 
 struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, int8_t offset);
 
-extern char *authmode_from_crypto(struct cipher_suite *rsn,
+char *authmode_from_crypto(struct cipher_suite *rsn,
                                   struct cipher_suite *msw, bool ess,
                                   bool privacy, bool wps);
 

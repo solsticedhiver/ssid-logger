@@ -41,7 +41,7 @@ void *hop_channel(void *arg)
   // push clean up code when thread is cancelled
   pthread_cleanup_push(cleanup_socket, (void *) sckt);
 
-  while (1) {
+  while (true) {
     msg = nlmsg_alloc();
     genlmsg_put(msg, 0, 0, ctrl, 0, 0, command, 0);
     NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, if_nametoindex(device));

@@ -99,7 +99,7 @@ void *retrieve_gps_data(void *arg)
 
   int status, ret;
 
-  while (1) {
+  while (true) {
     gloc.lat = gloc.lon = gloc.alt = gloc.acc = 0.0;
     // wait at most for 1 second to receive data
     if (gps_waiting(&gps_data, 1000000)) {

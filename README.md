@@ -16,7 +16,7 @@ You run *ssid-logger* with:
 
     $ sudo ssid-logger -i wlan0mon
 
-where *wlan0mon* is a wifi interface already put in monitor mode. If not, ssid-logger will do its best to try to put the interface in **monitor mode**, and exits if it fails to do so.
+where *wlan0mon* is a wifi interface already put in monitor mode.
 
 The default output format is a **sqlite3** database, named *beacon.db*. You can choose another name by using the `-o` switch.
 You can select to choose the *csv* format by using `-f csv`.

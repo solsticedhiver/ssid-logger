@@ -38,7 +38,7 @@ void *process_queue(void *args)
   int qs;
   struct timespec now;
 
-  while (1) {
+  while (true) {
     pthread_mutex_lock(&mutex_queue);
     pthread_cond_wait(&cv, &mutex_queue);
 
