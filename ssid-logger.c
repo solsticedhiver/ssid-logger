@@ -175,12 +175,10 @@ int main(int argc, char *argv[])
       file_name = malloc(32 * sizeof(char));
       snprintf(file_name, 32, "%s-ssid-logger.csv", timestamp);
     } else {
-      file_name = malloc((strlen(DB_NAME)+1)*sizeof(char));
-      file_name = strncpy(file_name, DB_NAME, strlen(DB_NAME) +1);
+      file_name = strdup(DB_NAME);
     }
   } else {
-    file_name = malloc(strlen(option_file_name) + 1);
-    strncpy(file_name, option_file_name, strlen(option_file_name)+1);
+    file_name = strdup(option_file_name);
   }
 
   if (option_gps == GPS_LOG_ZERO) {

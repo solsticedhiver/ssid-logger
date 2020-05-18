@@ -232,7 +232,7 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
   char authmode[MAX_AUTHMODE_LEN];
   authmode[0] = '\0';           // this is needed for strcat to work
   uint8_t last_byte;
-  size_t length = MAX_AUTHMODE_LEN;
+  size_t length = MAX_AUTHMODE_LEN - 1;
   bool is_eap_ft = false, is_psk_ft = false, add_pc = false;
 
   if (msw != NULL) {
@@ -380,7 +380,7 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
 
 char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
 {
-  char tmp[384], tail[64], firstseen[21];
+  char tail[64], firstseen[21];
   char *authmode, *ap_str;
 
   authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
@@ -388,21 +388,10 @@ char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
   sprintf(tail, "%d,%d,%-2.6f,%-2.6f,%-2.6f,%-2.6f,WIFI", ap.channel, ap.rssi, gloc.lat,
     gloc.lon, gloc.alt, gloc.acc);
 
-  tmp[0] = '\0';
-  strncat(tmp, ap.bssid, 18);
-  strcat(tmp, ",");
-  if (ap.ssid_len > 0) {
-    strncat(tmp, ap.ssid, 64); // that's the double allowed size by the 802.11 standard
-  }
-  strcat(tmp, ",");
-  strncat(tmp, authmode, MAX_AUTHMODE_LEN);
-  strcat(tmp, ",");
-  strncat(tmp, firstseen, 21);
-  strcat(tmp, ",");
-  strncat(tmp, tail, 55);
+  size_t len = 18 + ap.ssid_len + strlen(authmode) + 20 + 55;
+  ap_str = malloc(len+1);
+  snprintf(ap_str, len, "%s,%s,%s,%s,%s", ap.bssid, ap.ssid_len > 0 ? ap.ssid : "", authmode, firstseen, tail);
   free(authmode);
-
-  ap_str = strdup(tmp);
 
   return ap_str;
 
