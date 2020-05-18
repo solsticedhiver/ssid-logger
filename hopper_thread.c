@@ -31,12 +31,10 @@ void *hop_channel(void *arg)
   // based on https://stackoverflow.com/a/53602395/283067
   char *device = (char *) arg;
   uint8_t indx = 0;
-  uint32_t freq = 2412 + (CHANNELS[0] - 1) * 5;
   size_t chan_number = sizeof(CHANNELS) / sizeof(uint8_t);
-  struct nl_msg *msg;
 
   #ifdef HAS_PRCTL_H
-  // name our thread; using prctl instead of pthread_setname_np to avoid defininf _GNU_SOURCE
+  // name our thread; using prctl instead of pthread_setname_np to avoid defining _GNU_SOURCE
   prctl(PR_SET_NAME, "channel_hopper");
   #endif
 
@@ -44,29 +42,35 @@ void *hop_channel(void *arg)
   struct nl_sock *sckt = nl_socket_alloc();
   genl_connect(sckt);
   int ctrl = genl_ctrl_resolve(sckt, "nl80211");
-  enum nl80211_commands command = NL80211_CMD_SET_CHANNEL;
 
   // push clean up code when thread is cancelled
   pthread_cleanup_push(cleanup_socket, (void *) sckt);
 
-  while (true) {
-    msg = nlmsg_alloc();
-    genlmsg_put(msg, 0, 0, ctrl, 0, 0, command, 0);
-    NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, if_nametoindex(device));
-    NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, freq);
+  // create netlink message
+  struct nl_msg *msg = nlmsg_alloc();
+  genlmsg_put(msg, 0, 0, ctrl, 0, 0, NL80211_CMD_SET_CHANNEL, 0);
+  NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, if_nametoindex(device));
+  NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, 0); // correctly initialized below
 
+  // find the frequency attribute in the netlink stream message
+  struct nlattr *attr_freq = nlmsg_find_attr(nlmsg_hdr(msg), sizeof(uint32_t), NL80211_ATTR_WIPHY_FREQ);
+  // and its data portion to change it later
+  uint32_t *freq = nla_data(attr_freq);
+
+  while (true) {
+    // change the freq by changing the attribute in the netlink message
+    *freq = 2412 + (CHANNELS[indx] - 1) * 5;     // 2.4GHz band only for now
+
+    // send the modified message
     int ret = nl_send_auto(sckt, msg);
     if (!ret) {
       goto nla_put_failure;
     }
 
-    nlmsg_free(msg);
-
     indx++;
     if (indx == chan_number) {
       indx = 0;
     }
-    freq = 2412 + (CHANNELS[indx] - 1) * 5;     // 2.4GHz band only for now
 
     usleep(SLEEP_DURATION);
 
@@ -74,11 +78,13 @@ void *hop_channel(void *arg)
     continue;
 
   nla_put_failure:
-    nlmsg_free(msg);
     fprintf(stderr, "Error: failed to send netlink message\n");
     fflush(stderr);
     sleep(1);
   }
+
+  nlmsg_free(msg);
+  nl_socket_free(sckt);
 
   pthread_cleanup_pop(1);
 
