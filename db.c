@@ -12,11 +12,6 @@ Copyright © 2020 solsTiCe d'Hiver
 #include "gps_thread.h"
 #include "parsers.h"
 
-static inline int do_nothing(void *not_used, int argc, char **argv, char **col_name)
-{
-  return 0;
-}
-
 int init_beacon_db(const char *db_file, sqlite3 **db)
 {
   int ret;
@@ -31,7 +26,7 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
     "id integer not null primary key,"
     "mode text"
     ");";
-  if((ret = sqlite3_exec(*db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+  if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
     sqlite3_close(*db);
     return ret;
@@ -42,7 +37,7 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
     "ssid text not null,"
     "unique (bssid, ssid)"
     ");";
-  if((ret = sqlite3_exec(*db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+  if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
     sqlite3_close(*db);
     return ret;
@@ -60,25 +55,25 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
     "foreign key(ap) references ap(id),"
     "foreign key(authmode) references authmode(id)"
     ");";
-  if((ret = sqlite3_exec(*db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+  if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
     sqlite3_close(*db);
     return ret;
   }
   sql = "pragma synchronous = normal;";
-  if((ret = sqlite3_exec(*db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+  if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
     sqlite3_close(*db);
     return ret;
   }
   sql = "pragma temp_store = 2;"; // to store temp table and indices in memory
-  if((ret = sqlite3_exec(*db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+  if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
     sqlite3_close(*db);
     return ret;
   }
   sql = "pragma journal_mode = off;"; // disable journal for rollback (we don't use this)
-  if((ret = sqlite3_exec(*db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+  if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
     sqlite3_close(*db);
     return ret;
@@ -129,7 +124,7 @@ int64_t insert_authmode(const char *authmode, sqlite3 *db)
   authmode_id = search_authmode(authmode, db);
   if (!authmode_id) {
     snprintf(sql, 128, "insert into authmode (mode) values (\"%s\");", authmode);
-    if((ret = sqlite3_exec(db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+    if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
       fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
       sqlite3_close(db);
       return ret * -1;
@@ -187,7 +182,7 @@ int64_t insert_ap(struct ap_info ap, sqlite3 *db)
   if (!ap_id) {
     // if ever the ssid is longer than 32 chars, it is truncated at 128-18-length of string below
     snprintf(sql, 128, "insert into ap (bssid, ssid) values (\"%s\", \"%s\");", ap.bssid, ap.ssid);
-    if((ret = sqlite3_exec(db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+    if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
       fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
       sqlite3_close(db);
       return ret * -1;
@@ -212,7 +207,7 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db)
   snprintf(sql, 256, "insert into beacon (ts, ap, channel, rssi, lat, lon, alt, acc, authmode)"
     "values (%lu, %lu, %u, %d, %f, %f, %f, %f, %lu);",
     gloc.ftime.tv_sec, ap_id, ap.channel, ap.rssi, gloc.lat, gloc.lon, isnan(gloc.alt) ? 0.0 : gloc.alt, gloc.acc, authmode_id);
-  if((ret = sqlite3_exec(db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+  if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
     return ret * -1;
@@ -227,7 +222,7 @@ int begin_txn(sqlite3 *db)
   char sql[32];
 
   snprintf(sql, 32, "begin transaction;");
-  if((ret = sqlite3_exec(db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+  if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
     return ret * -1;
@@ -242,7 +237,7 @@ int commit_txn(sqlite3 *db)
   char sql[32];
 
   snprintf(sql, 32, "commit transaction;");
-  if((ret = sqlite3_exec(db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
+  if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
     return ret * -1;
