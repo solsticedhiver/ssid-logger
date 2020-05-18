@@ -87,11 +87,11 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
   return 0;
 }
 
-int search_authmode(const char *authmode, sqlite3 *db)
+int64_t search_authmode(const char *authmode, sqlite3 *db)
 {
   char *sql;
   sqlite3_stmt *stmt;
-  int authmode_id = 0, ret;
+  int64_t authmode_id = 0, ret;
 
   // look for an existing ap_info in the db
   sql = "select id from authmode where mode=?;";
@@ -109,7 +109,7 @@ int search_authmode(const char *authmode, sqlite3 *db)
         fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
         break;
       } else if (ret == SQLITE_ROW) {
-        authmode_id = sqlite3_column_int(stmt, 0);
+        authmode_id = sqlite3_column_int64(stmt, 0);
       } else {
         fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
         break;
@@ -120,10 +120,10 @@ int search_authmode(const char *authmode, sqlite3 *db)
   return authmode_id;
 }
 
-int insert_authmode(const char *authmode, sqlite3 *db)
+int64_t insert_authmode(const char *authmode, sqlite3 *db)
 {
     // insert the authmode into the db
-  int ret, authmode_id = 0;
+  int64_t ret, authmode_id = 0;
   char sql[128];
 
   authmode_id = search_authmode(authmode, db);
@@ -140,11 +140,11 @@ int insert_authmode(const char *authmode, sqlite3 *db)
   return authmode_id;
 }
 
-int search_ap(struct ap_info ap, sqlite3 *db)
+int64_t search_ap(struct ap_info ap, sqlite3 *db)
 {
   char *sql;
   sqlite3_stmt *stmt;
-  int ap_id = 0, ret;
+  int64_t ap_id = 0, ret;
 
   // look for an existing ap_info in the db
   sql = "select id from ap where bssid=? and ssid=?;";
@@ -166,7 +166,7 @@ int search_ap(struct ap_info ap, sqlite3 *db)
         fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
         break;
       } else if (ret == SQLITE_ROW) {
-        ap_id = sqlite3_column_int(stmt, 0);
+        ap_id = sqlite3_column_int64(stmt, 0);
       } else {
         fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
         break;
@@ -177,10 +177,10 @@ int search_ap(struct ap_info ap, sqlite3 *db)
   return ap_id;
 }
 
-int insert_ap(struct ap_info ap, sqlite3 *db)
+int64_t insert_ap(struct ap_info ap, sqlite3 *db)
 {
     // insert the ap_info into the db
-  int ret, ap_id = 0;
+  int64_t ret, ap_id = 0;
   char sql[128];
 
   ap_id = search_ap(ap, db);
@@ -200,7 +200,8 @@ int insert_ap(struct ap_info ap, sqlite3 *db)
 
 int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db)
 {
-  int ap_id, authmode_id, ret;
+  int64_t ap_id, authmode_id;
+  int ret;
 
   ap_id = insert_ap(ap, db);
   char *authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
@@ -209,7 +210,7 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db)
 
   char sql[256];
   snprintf(sql, 256, "insert into beacon (ts, ap, channel, rssi, lat, lon, alt, acc, authmode)"
-    "values (%lu, %u, %u, %d, %f, %f, %f, %f, %d);",
+    "values (%lu, %lu, %u, %d, %f, %f, %f, %f, %lu);",
     gloc.ftime.tv_sec, ap_id, ap.channel, ap.rssi, gloc.lat, gloc.lon, isnan(gloc.alt) ? 0.0 : gloc.alt, gloc.acc, authmode_id);
   if((ret = sqlite3_exec(db, sql, do_nothing, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
