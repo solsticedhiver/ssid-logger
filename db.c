@@ -78,6 +78,12 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
     sqlite3_close(*db);
     return ret;
   }
+  sql = "pragma foreign_keys = on;"; // this needs to be turn on
+  if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
+    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
+    sqlite3_close(*db);
+    return ret;
+  }
 
   return 0;
 }
