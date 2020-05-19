@@ -1,5 +1,5 @@
 /*
-ssid-logger is a simple software to log SSID you encouter in your vicinity
+ssid-logger is a simple software to log SSID you encounter in your vicinity
 Copyright © 2020 solsTiCe d'Hiver
 */
 #include <net/if.h>
