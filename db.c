@@ -11,6 +11,7 @@ Copyright © 2020 solsTiCe d'Hiver
 #include "ap_info.h"
 #include "gps_thread.h"
 #include "parsers.h"
+#include "lruc.h"
 
 int init_beacon_db(const char *db_file, sqlite3 **db)
 {
@@ -199,15 +200,43 @@ int64_t insert_ap(struct ap_info ap, sqlite3 *db)
   return ap_id;
 }
 
-int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db)
+int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *authmode_pk_cache, lruc *ap_pk_cache)
 {
-  int64_t ap_id, authmode_id;
   int ret;
+  int64_t ap_id = 0, authmode_id = 0;
+  void *value = NULL;
 
-  ap_id = insert_ap(ap, db);
+  // look for ap in ap_pk_cache
+  size_t ap_key_len = 18 + ap.ssid_len;
+  char *ap_key = malloc(ap_key_len * sizeof(char));
+  // concat bssid and ssid to use it as key in ap_pk_cache
+  snprintf(ap_key, ap_key_len + 1, "%s%s", ap.bssid, ap.ssid);
+  lruc_get(ap_pk_cache, ap_key, ap_key_len, &value);
+  if (value == NULL) {
+    ap_id = insert_ap(ap, db);
+    // insert ap_id in ap_pk_cache
+    int64_t *new_value = malloc(sizeof(int64_t));
+    *new_value = ap_id;
+    lruc_set(ap_pk_cache, ap_key, ap_key_len, new_value, sizeof(int64_t));
+  } else {
+    ap_id = *(int64_t *)value;
+    free(ap_key);
+  }
+
+  value = NULL;
+  // look for authmode in authmode_pk_cache
   char *authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
-  authmode_id = insert_authmode(authmode, db);
-  free(authmode);
+  lruc_get(authmode_pk_cache, authmode, strlen(authmode), &value);
+  if (value == NULL) {
+    authmode_id = insert_authmode(authmode, db);
+    // insert authmode_id in authmode_pk_cache
+    int64_t *new_value = malloc(sizeof(int64_t));
+    *new_value = authmode_id;
+    lruc_set(authmode_pk_cache, authmode, strlen(authmode), new_value, sizeof(int64_t));
+  } else {
+    authmode_id = *(int64_t *)value;
+    free(authmode);
+  }
 
   char sql[256];
   snprintf(sql, 256, "insert into beacon (ts, ap, channel, rssi, lat, lon, alt, acc, authmode)"

@@ -16,8 +16,12 @@ Copyright © 2020 solsTiCe d'Hiver
 
 #include "hopper_thread.h"
 
-void cleanup_socket(void *arg){
-  struct nl_sock *sckt = (struct nl_sock *)arg;
+struct nl_sock *sckt = NULL;
+struct nl_msg *msg = NULL;
+
+void cleanup_socket(void *arg)
+{
+  nlmsg_free(msg);
   nl_close(sckt);
   nl_socket_free(sckt);
 
@@ -38,16 +42,16 @@ void *hop_channel(void *arg)
   prctl(PR_SET_NAME, "channel_hopper");
   #endif
 
+  // push clean up code when thread is cancelled
+  pthread_cleanup_push(cleanup_socket, NULL);
+
   // Create the socket and connect to it
-  struct nl_sock *sckt = nl_socket_alloc();
+  sckt = nl_socket_alloc();
   genl_connect(sckt);
   int ctrl = genl_ctrl_resolve(sckt, "nl80211");
 
-  // push clean up code when thread is cancelled
-  pthread_cleanup_push(cleanup_socket, (void *) sckt);
-
   // create netlink message
-  struct nl_msg *msg = nlmsg_alloc();
+  msg = nlmsg_alloc();
   genlmsg_put(msg, 0, 0, ctrl, 0, 0, NL80211_CMD_SET_CHANNEL, 0);
   NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, if_nametoindex(device));
   NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, 0); // correctly initialized below
@@ -84,6 +88,7 @@ void *hop_channel(void *arg)
   }
 
   nlmsg_free(msg);
+  nl_close(sckt);
   nl_socket_free(sckt);
 
   pthread_cleanup_pop(1);

@@ -21,6 +21,10 @@ Copyright © 2020 solsTiCe d'Hiver
 #include "gps_thread.h"
 #include "db.h"
 #include "ap_info.h"
+#include "lruc.h"
+
+#define AUTHMODE_CACHE_SIZE 32
+#define AP_CACHE_SIZE 64
 
 extern pthread_cond_t cv;
 extern pthread_mutex_t mutex_queue;
@@ -32,6 +36,16 @@ struct timespec start_ts_cache;
 extern bool format_csv;
 extern enum _option_gps option_gps;
 extern FILE *file_ptr;
+
+lruc *authmode_pk_cache = NULL, *ap_pk_cache = NULL;
+
+void cleanup_caches(void *arg)
+{
+  lruc_free(authmode_pk_cache);
+  lruc_free(ap_pk_cache);
+
+  return;
+}
 
 // worker thread that will process the queue filled by process_packet()
 void *process_queue(void *args)
@@ -45,6 +59,13 @@ void *process_queue(void *args)
   // name our thread; using prctl instead of pthread_setname_np to avoid defining _GNU_SOURCE
   prctl(PR_SET_NAME, "logger");
   #endif
+
+  // init caches
+  authmode_pk_cache = lruc_new(AUTHMODE_CACHE_SIZE * sizeof(int64_t), sizeof(int64_t));
+  ap_pk_cache = lruc_new(AP_CACHE_SIZE * sizeof(int64_t), sizeof(int64_t));
+
+  // push cleanup code when exiting thread
+  pthread_cleanup_push(cleanup_caches, NULL);
 
   while (true) {
     pthread_mutex_lock(&mutex_queue);
@@ -75,7 +96,7 @@ void *process_queue(void *args)
       if (((option_gps == GPS_LOG_ONZ) && gloc.lat && gloc.lon)
         || (option_gps == GPS_LOG_ALL) || (option_gps == GPS_LOG_ZERO)) {
         if (!format_csv) {
-          insert_beacon(*ap, gloc, db);
+          insert_beacon(*ap, gloc, db, authmode_pk_cache, ap_pk_cache);
         } else {
           char *tmp = ap_to_str(*ap, gloc);
           fprintf(file_ptr, "%s\n", tmp);
@@ -84,6 +105,8 @@ void *process_queue(void *args)
       }
       pthread_mutex_unlock(&mutex_gloc);
     }
+
+    // commit our data if time elapsed is greater than DB_CACHE_TIME
     clock_gettime(CLOCK_MONOTONIC, &now);
     if (now.tv_sec - start_ts_cache.tv_sec >= DB_CACHE_TIME) {
       if (format_csv) {
@@ -96,11 +119,15 @@ void *process_queue(void *args)
       }
       start_ts_cache = now;
     }
+    // free the tmp array of ap_info
     for (int j = 0; j < qs; j++) {
       ap = aps[j];
       free_ap_info(ap);
     }
     free(aps);
   }
+
+  pthread_cleanup_pop(1);
+
   return NULL;
 }
