@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <err.h>
+#include <inttypes.h>
 
 #include "lruc.h"
 
@@ -315,7 +316,7 @@ lruc_error lruc_print(lruc *cache)
       item = cache->items[i];
       while (item) {
         value = (int64_t *)item->value;
-        printf("%s%ld", first ? "" : " ", *value);
+        printf("%s%"PRId64, first ? "" : " ", *value);
         if (first) first = 0;
         item = (lruc_item *) item->next;
       }

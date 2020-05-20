@@ -7,6 +7,7 @@ Copyright © 2020 solsTiCe d'Hiver
 #include <sqlite3.h>
 #include <string.h>
 #include <math.h>
+#include <inttypes.h>
 
 #include "ap_info.h"
 #include "gps_thread.h"
@@ -240,7 +241,7 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *aut
 
   char sql[256];
   snprintf(sql, 256, "insert into beacon (ts, ap, channel, rssi, lat, lon, alt, acc, authmode)"
-    "values (%lu, %lu, %u, %d, %f, %f, %f, %f, %lu);",
+    "values (%lu, %"PRId64", %u, %d, %f, %f, %f, %f, %"PRId64");",
     gloc.ftime.tv_sec, ap_id, ap.channel, ap.rssi, gloc.lat, gloc.lon, isnan(gloc.alt) ? 0.0 : gloc.alt, gloc.acc, authmode_id);
   if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
