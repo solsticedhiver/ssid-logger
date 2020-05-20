@@ -110,7 +110,7 @@ void usage(void)
 
 void parse_args(int argc, char *argv[], bool *format_csv, char **file_name, char **iface, option_gps_t *option_gps)
 {
-  char opt;
+  int opt;
   char *option_file_format = NULL;
   char *option_file_name = NULL;
 
