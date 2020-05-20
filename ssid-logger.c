@@ -108,6 +108,95 @@ void usage(void)
        );
 }
 
+void initialize_pcap(pcap_t **handle, const char *iface)
+{
+  char errbuf[PCAP_ERRBUF_SIZE];
+
+  // just check if iface is in the list of known devices
+  pcap_if_t *devs = NULL;
+  if (pcap_findalldevs(&devs, errbuf) == 0) {
+    pcap_if_t *d = devs;
+    bool found = false;
+    while (!found && d != NULL) {
+      if ((strlen(d->name) == strlen(iface))
+          && (memcmp(d->name, iface, strlen(iface)) == 0)) {
+        found = true;
+        break;
+      }
+      d = d->next;
+    }
+    pcap_freealldevs(devs);
+    if (!found) {
+      fprintf(stderr, "Error: %s is not a known interface.\n", iface);
+      exit(EXIT_FAILURE);
+    }
+  }
+  *handle = pcap_create(iface, errbuf);
+  if (*handle == NULL) {
+    fprintf(stderr, "Error: unable to create pcap handle: %s\n", errbuf);
+    exit(EXIT_FAILURE);
+  }
+  pcap_set_snaplen(*handle, SNAP_LEN);
+  pcap_set_timeout(*handle, 1000);
+  pcap_set_promisc(*handle, 1);
+
+  if (pcap_activate(*handle)) {
+    pcap_perror(*handle, "Error: ");
+    exit(EXIT_FAILURE);
+  }
+  // only capture packets received by interface
+  if (pcap_setdirection(*handle, PCAP_D_IN)) {
+    pcap_perror(*handle, "Error: ");
+    exit(EXIT_FAILURE);
+  }
+
+  int *dlt_buf, dlt_buf_len;
+  dlt_buf_len = pcap_list_datalinks(*handle, &dlt_buf);
+  if (dlt_buf_len < 0) {
+    pcap_perror(*handle, "Error: ");
+    exit(EXIT_FAILURE);
+  }
+  bool found = false;
+  for (int i=0; i< dlt_buf_len; i++) {
+    if  (dlt_buf[i] == DLT_IEEE802_11_RADIO) {
+      found = true;
+    }
+  }
+  pcap_free_datalinks(dlt_buf);
+
+  if (found) {
+    if (pcap_set_datalink(*handle, DLT_IEEE802_11_RADIO)) {
+      pcap_perror(*handle, "Error: ");
+      exit(EXIT_FAILURE);
+    }
+  } else {
+    fprintf(stderr, "Error: the interface %s does not support radiotap header or is not in monitor mode\n", iface);
+    exit(EXIT_FAILURE);
+  }
+
+  // only capture beacon frames
+  struct bpf_program bfp;
+  char filter_exp[] = "type mgt subtype beacon";
+
+  if (pcap_compile(*handle, &bfp, filter_exp, 1, PCAP_NETMASK_UNKNOWN) == -1) {
+    fprintf(stderr, "Error: couldn't parse filter %s: %s\n",
+            filter_exp, pcap_geterr(*handle));
+    ret = EXIT_FAILURE;
+    goto handle_failure;
+  }
+  if (pcap_setfilter(*handle, &bfp) == -1) {
+    fprintf(stderr, "Error: couldn't install filter '%s': %s\n",
+            filter_exp, pcap_geterr(*handle));
+    exit(EXIT_FAILURE);
+  }
+  pcap_freecode(&bfp);
+
+  return;
+
+handle_failure:
+  pcap_close(*handle);
+}
+
 int main(int argc, char *argv[])
 {
   char *iface = NULL;
@@ -186,86 +275,7 @@ int main(int argc, char *argv[])
       "** Please, don't upload such data file to wigle.net **\n");
   }
 
-  char errbuf[PCAP_ERRBUF_SIZE];
-
-  // just check if iface is in the list of known devices
-  pcap_if_t *devs = NULL;
-  if (pcap_findalldevs(&devs, errbuf) == 0) {
-    pcap_if_t *d = devs;
-    bool found = false;
-    while (!found && d != NULL) {
-      if ((strlen(d->name) == strlen(iface))
-          && (memcmp(d->name, iface, strlen(iface)) == 0)) {
-        found = true;
-        break;
-      }
-      d = d->next;
-    }
-    pcap_freealldevs(devs);
-    if (!found) {
-      fprintf(stderr, "Error: %s is not a known interface.\n", iface);
-      exit(EXIT_FAILURE);
-    }
-  }
-  handle = pcap_create(iface, errbuf);
-  if (handle == NULL) {
-    fprintf(stderr, "Error: unable to create pcap handle: %s\n", errbuf);
-    exit(EXIT_FAILURE);
-  }
-  pcap_set_snaplen(handle, SNAP_LEN);
-  pcap_set_timeout(handle, 1000);
-  pcap_set_promisc(handle, 1);
-
-  if (pcap_activate(handle)) {
-    pcap_perror(handle, "Error: ");
-    exit(EXIT_FAILURE);
-  }
-  // only capture packets received by interface
-  if (pcap_setdirection(handle, PCAP_D_IN)) {
-    pcap_perror(handle, "Error: ");
-    exit(EXIT_FAILURE);
-  }
-
-  int *dlt_buf, dlt_buf_len;
-  dlt_buf_len = pcap_list_datalinks(handle, &dlt_buf);
-  if (dlt_buf_len < 0) {
-    pcap_perror(handle, "Error: ");
-    exit(EXIT_FAILURE);
-  }
-  bool found = false;
-  for (int i=0; i< dlt_buf_len; i++) {
-    if  (dlt_buf[i] == DLT_IEEE802_11_RADIO) {
-      found = true;
-    }
-  }
-  pcap_free_datalinks(dlt_buf);
-
-  if (found) {
-    if (pcap_set_datalink(handle, DLT_IEEE802_11_RADIO)) {
-      pcap_perror(handle, "Error: ");
-      exit(EXIT_FAILURE);
-    }
-  } else {
-    fprintf(stderr, "Error: the interface %s does not support radiotap header or is not in monitor mode\n", iface);
-    exit(EXIT_FAILURE);
-  }
-
-  // only capture beacon frames
-  struct bpf_program bfp;
-  char filter_exp[] = "type mgt subtype beacon";
-
-  if (pcap_compile(handle, &bfp, filter_exp, 1, PCAP_NETMASK_UNKNOWN) == -1) {
-    fprintf(stderr, "Error: couldn't parse filter %s: %s\n",
-            filter_exp, pcap_geterr(handle));
-    ret = EXIT_FAILURE;
-    goto handle_failure;
-  }
-  if (pcap_setfilter(handle, &bfp) == -1) {
-    fprintf(stderr, "Error: couldn't install filter '%s': %s\n",
-            filter_exp, pcap_geterr(handle));
-    exit(EXIT_FAILURE);
-  }
-  pcap_freecode(&bfp);
+  initialize_pcap(&handle, iface);
 
   // start the channel hopper thread
   if (pthread_create(&hopper, NULL, hop_channel, iface)) {
@@ -324,6 +334,7 @@ int main(int argc, char *argv[])
   clock_gettime(CLOCK_MONOTONIC, &start_ts_queue);
 
   if (format_csv) {
+    // write pre-header and header
     char *os_name = NULL, *os_version = NULL;
     parse_os_release(&os_name, &os_version);
 
@@ -355,13 +366,6 @@ int main(int argc, char *argv[])
     }
   }
 
-  if (format_csv) {
-    fclose(file_ptr);
-  } else {
-    commit_txn(db);
-    sqlite3_close(db);
-  }
-
 #ifdef BLINK_LED
 blink_failure:
   pthread_cancel(blink);
@@ -376,6 +380,13 @@ gps_failure:
 
 logger_failure:
   pthread_cancel(logger);
+
+  if (format_csv) {
+    fclose(file_ptr);
+  } else {
+    commit_txn(db);
+    sqlite3_close(db);
+  }
 
   // free up elements of the queue
   int qs = queue->size;
@@ -392,7 +403,6 @@ hopper_failure:
   pthread_mutex_destroy(&mutex_gloc);
   pthread_cond_destroy(&cv);
 
-handle_failure:
   pcap_close(handle);
 
   free(file_name);
