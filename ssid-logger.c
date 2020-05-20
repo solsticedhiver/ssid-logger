@@ -60,7 +60,7 @@ struct timespec start_ts_queue;
 
 sqlite3 *db = NULL;
 bool format_csv = false;
-enum _option_gps option_gps = GPS_LOG_ONZ;
+option_gps_t option_gps = GPS_LOG_ONZ;
 FILE *file_ptr = NULL;
 int ret = 0;
 
@@ -106,6 +106,78 @@ void usage(void)
          "  -z              log ssid even if no gps coordinates are available\n"
          "  -zz or -z -z    don't use gpsd and log all ssids\n"
        );
+}
+
+void parse_args(int argc, char *argv[], bool *format_csv, char **file_name, char **iface, option_gps_t *option_gps)
+{
+  char opt;
+  char *option_file_format = NULL;
+  char *option_file_name = NULL;
+
+  while ((opt = getopt(argc, argv, "f:hi:o:Vz")) != -1) {
+    switch (opt) {
+    case 'f':
+      option_file_format = optarg;
+      break;
+    case 'h':
+      usage();
+      exit(EXIT_SUCCESS);
+      break;
+    case 'i':
+      *iface = optarg;
+      break;
+    case 'o':
+      option_file_name = optarg;
+      break;
+    case 'V':
+      printf("%s %s / Copyright © 2020 solsTiCe d'Hiver\n"
+        "This program comes with ABSOLUTELY NO WARRANTY;"
+        " this is free software, and you are welcome to redistribute it"
+        " under certain conditions; for details, see LICENSE.txt\n", NAME, VERSION);
+      exit(EXIT_SUCCESS);
+      break;
+    case 'z':
+      // one -z: log all SSIDs even if no GPS data so with gps coord. as 0.0
+      // two -z (-z -z): log all SSIDs with no gps coord. (0.0) and disable the use of gpsd
+      (*option_gps)++;
+      break;
+    case '?':
+      usage();
+      exit(EXIT_FAILURE);
+    default:
+      usage();
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  if (iface == NULL) {
+    fprintf(stderr, "Error: no interface selected\n");
+    exit(EXIT_FAILURE);
+  }
+  //printf("The device you entered: %s\n", iface);
+  if (option_file_format) {
+    if (strcmp(option_file_format, "csv") == 0) {
+      *format_csv = true;
+    } else if (strcmp(option_file_format, "sqlite3") == 0) {
+      *format_csv = false;
+    } else {
+      fprintf(stderr, "Error: unrecognised format (not csv nor sqlite3)\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+  if (option_file_name == NULL) {
+    if (*format_csv) {
+      time_t now = time(NULL);
+      char timestamp[16];
+      strftime(timestamp, 16, "%Y%m%dT%H%M%S", gmtime(&now));
+      *file_name = malloc(32 * sizeof(char));
+      snprintf(*file_name, 32, "%s-ssid-logger.csv", timestamp);
+    } else {
+      *file_name = strdup(DB_NAME);
+    }
+  } else {
+    *file_name = strdup(option_file_name);
+  }
 }
 
 void initialize_pcap(pcap_t **handle, const char *iface)
@@ -200,75 +272,9 @@ handle_failure:
 int main(int argc, char *argv[])
 {
   char *iface = NULL;
-  char *option_file_format = NULL;
-  char *option_file_name = NULL;
   char *file_name = NULL;
-  int opt;
 
-  while ((opt = getopt(argc, argv, "f:hi:o:Vz")) != -1) {
-    switch (opt) {
-    case 'f':
-      option_file_format = optarg;
-      break;
-    case 'h':
-      usage();
-      exit(EXIT_SUCCESS);
-      break;
-    case 'i':
-      iface = optarg;
-      break;
-    case 'o':
-      option_file_name = optarg;
-      break;
-    case 'V':
-      printf("%s %s / Copyright © 2020 solsTiCe d'Hiver\n"
-        "This program comes with ABSOLUTELY NO WARRANTY;"
-        " this is free software, and you are welcome to redistribute it"
-        " under certain conditions; for details, see LICENSE.txt\n", NAME, VERSION);
-      exit(EXIT_SUCCESS);
-      break;
-    case 'z':
-      // one -z: log all SSIDs even if no GPS data so with gps coord. as 0.0
-      // two -z (-z -z): log all SSIDs with no gps coord. (0.0) and disable the use of gpsd
-      option_gps++;
-      break;
-    case '?':
-      usage();
-      exit(EXIT_FAILURE);
-    default:
-      usage();
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  if (iface == NULL) {
-    fprintf(stderr, "Error: no interface selected\n");
-    exit(EXIT_FAILURE);
-  }
-  //printf("The device you entered: %s\n", iface);
-  if (option_file_format) {
-    if (strcmp(option_file_format, "csv") == 0) {
-      format_csv = true;
-    } else if (strcmp(option_file_format, "sqlite3") == 0) {
-      format_csv = false;
-    } else {
-      fprintf(stderr, "Error: unrecognised format (not csv nor sqlite3)");
-      exit(EXIT_FAILURE);
-    }
-  }
-  if (option_file_name == NULL) {
-    if (format_csv) {
-      time_t now = time(NULL);
-      char timestamp[16];
-      strftime(timestamp, 16, "%Y%m%dT%H%M%S", gmtime(&now));
-      file_name = malloc(32 * sizeof(char));
-      snprintf(file_name, 32, "%s-ssid-logger.csv", timestamp);
-    } else {
-      file_name = strdup(DB_NAME);
-    }
-  } else {
-    file_name = strdup(option_file_name);
-  }
+  parse_args(argc, argv, &format_csv, &file_name, &iface, &option_gps);
 
   if (option_gps == GPS_LOG_ZERO) {
     printf(":: Warning: you have disabled the use of gpsd. All the GPS data will be 0.0.\n"

@@ -34,7 +34,7 @@ extern struct gps_loc gloc;            // global variable to hold retrieved gps 
 extern sqlite3 *db;
 struct timespec start_ts_cache;
 extern bool format_csv;
-extern enum _option_gps option_gps;
+extern option_gps_t option_gps;
 extern FILE *file_ptr;
 
 lruc *authmode_pk_cache = NULL, *ap_pk_cache = NULL;

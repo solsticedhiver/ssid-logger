@@ -69,14 +69,14 @@ static inline int update_gloc(struct gps_data_t gps_data)
 void *retrieve_gps_data(void *arg)
 {
   struct gps_data_t gps_data;
-  enum _option_gps *option_gps;
+  option_gps_t *option_gps;
 
   #ifdef HAS_PRCTL_H
   // name our thread; using prctl instead of pthread_setname_np to avoid defining _GNU_SOURCE
   prctl(PR_SET_NAME, "logger");
   #endif
 
-  option_gps = (enum _option_gps *)arg;
+  option_gps = (option_gps_t *)arg;
   if (*option_gps == GPS_LOG_ZERO) {
     // don't use gpsd
     pthread_mutex_lock(&mutex_gtr);
