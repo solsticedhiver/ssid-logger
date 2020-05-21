@@ -17,8 +17,28 @@ Copyright © 2020 solsTiCe d'Hiver
 
 #define MAX_AUTHMODE_LEN 192
 
-//static const char *CIPHER_SUITE_SELECTORS[] =
-//    { "Use group cipher suite", "WEP-40", "TKIP", "", "CCMP", "WEP-104", "BIP" };
+/*
+Cipher suite selectors
+00-0F-AC-00 Use group cipher suite
+00-0F-AC-01 WEP-40
+00-0F-AC-02 TKIP
+00-0F-AC-03 reserved
+00-0F-AC-04 CCMP
+00-0F-AC-05 WEP-104
+00-0F-AC-06 BIP
+
+AKM suite selectors
+00-0F-AC-00 reserved
+00-0F-AC-01 802.1X (EAP)
+00-0F-AC-02 PSK
+00-0F-AC-03 FT over 802.1x (EAP+FT)
+00-0F-AC-04 FT with PKS (PSK+FT)
+00-0F-AC-05 802.1X  or PMKSA with SHA256 (EAP-SHA256 ?)
+00-0F-AC-06 PSK-SHA256
+00-0F-AC-07 TDLS
+00-0F-AC-08 SAE-SHA256
+00-0F-AC-09 FT over SAE-SHA256 (FT+SAE-SHA256 ?)
+*/
 
 // from https://stackoverflow.com/a/779960/283067
 char *str_replace(const char *orig, const char *rep, const char *with)
@@ -342,6 +362,10 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
           case 5:
             strncat(authmode, "WEP-104", length);
             length -= 7;
+            break;
+          case 6:
+            strncat(authmode, "BIP", length);
+            length -= 3;
             break;
           }
         }
