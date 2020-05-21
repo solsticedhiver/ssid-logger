@@ -15,8 +15,6 @@ Copyright © 2020 solsTiCe d'Hiver
 #include "gps_thread.h"
 #include "ap_info.h"
 
-#define MAX_AUTHMODE_LEN 192
-
 /*
 Cipher suite selectors
 00-0F-AC-00 Use group cipher suite
@@ -480,4 +478,30 @@ int parse_os_release(char **os_name, char **os_version)
   fclose(fp);
 
   return 0;
+}
+
+void print_cipher_suite(struct cipher_suite *cs)
+{
+  if (cs == NULL) {
+    printf("NULL\n");
+    return;
+  }
+
+  printf("Group cipher suite: 0x%02X%02X%02X%02X\n", cs->group_cipher_suite[0],
+    cs->group_cipher_suite[1], cs->group_cipher_suite[2],
+    cs->group_cipher_suite[3]);
+  printf("Pairwise cipher count: %u, suite:", cs->pairwise_cipher_count);
+  for (int i=0; i<cs->pairwise_cipher_count; i++) {
+    printf(" 0x%02X%02X%02X%02X", cs->pairwise_cipher_suite[i][0],
+    cs->pairwise_cipher_suite[i][1],cs->pairwise_cipher_suite[i][2],
+    cs->pairwise_cipher_suite[i][3]);
+  }
+  printf("\n");
+  printf("AKM cipher count: %u, suite:", cs->akm_cipher_count);
+  for (int i=0; i<cs->akm_cipher_count; i++) {
+    printf(" 0x%02X%02X%02X%02X", cs->akm_cipher_suite[i][0],
+    cs->akm_cipher_suite[i][1],cs->akm_cipher_suite[i][2],
+    cs->akm_cipher_suite[i][3]);
+  }
+  printf("\n");
 }

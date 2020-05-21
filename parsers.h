@@ -11,6 +11,8 @@
 #define MS_OUI "\000\120\362"   // 0x000x500xF2 or 00-50-F2
 #define WPS_ID "\000\120\362\004"       // 0x000x500xF20x04 or 00-50-F2-04
 
+#define MAX_AUTHMODE_LEN 128
+
 struct cipher_suite {
   uint8_t group_cipher_suite[4];
   uint16_t pairwise_cipher_count;
@@ -23,15 +25,19 @@ void free_cipher_suite(struct cipher_suite *cs);
 
 struct cipher_suite *parse_cipher_suite(uint8_t * start);
 
-int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq, int8_t * rssi);
+int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq,
+  int8_t * rssi);
 
-struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, int8_t offset);
+struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len,
+  int8_t offset);
 
 char *authmode_from_crypto(struct cipher_suite *rsn,
-                                  struct cipher_suite *msw, bool ess,
-                                  bool privacy, bool wps);
+  struct cipher_suite *msw, bool ess, bool privacy, bool wps);
 
 char *ap_to_str(struct ap_info ap, struct gps_loc gloc);
 
 int parse_os_release(char **os_name, char **os_version);
+
+void print_cipher_suite(struct cipher_suite *cs);
+
 #endif
