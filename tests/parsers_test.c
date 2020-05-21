@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <cmocka.h>
 
 #include <unistd.h>
@@ -56,7 +57,8 @@ struct gps_loc gloc;
 int pkt_count = 0, *pkt_len = NULL;
 uint8_t **pkts = NULL;
 
-static void test_parse_beacon_frame(void **state) {
+static void test_parse_beacon_frame_from_pcap(void **state)
+{
   (void) state; // unused
   char errbuf[PCAP_ERRBUF_SIZE];
 
@@ -89,9 +91,129 @@ static void test_parse_beacon_frame(void **state) {
   free(handle);
 }
 
+static void test_authmode_from_crypto(void **state)
+{
+  (void) state; // unused
+  struct cipher_suite *rsn = NULL, *msw = NULL;
+  bool ess = true, privacy = false, wps = false;
+  char *authmode;
+  static const uint8_t x000FAC01[4] = {0x00, 0x0F, 0xAC, 0x01};
+  static const uint8_t x000FAC02[4] = {0x00, 0x0F, 0xAC, 0x02};
+  static const uint8_t x000FAC03[4] = {0x00, 0x0F, 0xAC, 0x03};
+  static const uint8_t x000FAC04[4] = {0x00, 0x0F, 0xAC, 0x04};
+  //static const uint8_t x000FAC05[4] = {0x00, 0x0F, 0xAC, 0x05};
+  static const uint8_t x000FAC06[4] = {0x00, 0x0F, 0xAC, 0x06};
+
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[ESS]");
+  free(authmode);
+
+  privacy = true;
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WEP][ESS]");
+  free(authmode);
+
+  wps = true;
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WEP][ESS][WPS]");
+  free(authmode);
+
+  rsn = malloc(sizeof(struct cipher_suite));
+  memcpy(rsn->group_cipher_suite, x000FAC04, sizeof(x000FAC04));
+  rsn->pairwise_cipher_count = 2;
+  rsn->pairwise_cipher_suite = malloc(sizeof(uint8_t *)* rsn->pairwise_cipher_count);
+  rsn->pairwise_cipher_suite[0] = malloc(sizeof(uint8_t) * 4);
+  memcpy(rsn->pairwise_cipher_suite[0], x000FAC04, sizeof(x000FAC04));
+  rsn->pairwise_cipher_suite[1] = malloc(sizeof(uint8_t) * 4);
+  memcpy(rsn->pairwise_cipher_suite[1], x000FAC02, sizeof(x000FAC02));
+  rsn->akm_cipher_count = 1;
+  rsn->akm_cipher_suite = malloc(sizeof(uint8_t *)* rsn->akm_cipher_count);
+  rsn->akm_cipher_suite[0] = malloc(sizeof(uint8_t) * 4);
+  memcpy(rsn->akm_cipher_suite[0], x000FAC02, sizeof(x000FAC02));
+  msw = NULL;
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WPA2-PSK-CCMP+TKIP][ESS][WPS]");
+  free(authmode);
+
+  rsn->pairwise_cipher_count = 1;
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WPA2-PSK-CCMP][ESS][WPS]");
+  free(authmode);
+
+  memcpy(rsn->pairwise_cipher_suite[0], x000FAC02, sizeof(x000FAC02));
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WPA2-PSK-TKIP][ESS][WPS]");
+  free(authmode);
+
+  rsn->pairwise_cipher_count = 2;
+  memcpy(rsn->pairwise_cipher_suite[1], x000FAC04, sizeof(x000FAC04));
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WPA2-PSK-TKIP+CCMP][ESS][WPS]");
+  free(authmode);
+
+  memcpy(rsn->pairwise_cipher_suite[0], x000FAC04, sizeof(x000FAC04));
+  memcpy(rsn->pairwise_cipher_suite[1], x000FAC02, sizeof(x000FAC02));
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WPA2-PSK-CCMP+TKIP][ESS][WPS]");
+  free(authmode);
+
+  rsn->akm_cipher_count = 2;
+  rsn->akm_cipher_suite = realloc(rsn->akm_cipher_suite, sizeof(uint8_t *)* rsn->akm_cipher_count);
+  rsn->akm_cipher_suite[1] = malloc(sizeof(uint8_t) * 4);
+  memcpy(rsn->akm_cipher_suite[1], x000FAC04, sizeof(x000FAC04));
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WPA2-PSK+FT/PSK-CCMP+TKIP][ESS][WPS]");
+  free(authmode);
+
+  memcpy(rsn->akm_cipher_suite[0], x000FAC04, sizeof(x000FAC04));
+  memcpy(rsn->akm_cipher_suite[1], x000FAC02, sizeof(x000FAC02));
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WPA2-PSK+FT/PSK-CCMP+TKIP][ESS][WPS]");
+  free(authmode);
+
+  memcpy(rsn->akm_cipher_suite[0], x000FAC01, sizeof(x000FAC01));
+  memcpy(rsn->akm_cipher_suite[1], x000FAC03, sizeof(x000FAC03));
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WPA2-EAP+FT/EAP-CCMP+TKIP][ESS][WPS]");
+  free(authmode);
+
+  rsn->akm_cipher_count = 1;
+  memcpy(rsn->akm_cipher_suite[0], x000FAC06, sizeof(x000FAC06));
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WPA2-PSK-SHA256-CCMP+TKIP][ESS][WPS]");
+  free(authmode);
+
+  rsn->pairwise_cipher_count = 1;
+  memcpy(rsn->pairwise_cipher_suite[0], x000FAC04, sizeof(x000FAC04));
+  rsn->akm_cipher_count = 2;
+  memcpy(rsn->akm_cipher_suite[0], x000FAC01, sizeof(x000FAC01));
+  memcpy(rsn->akm_cipher_suite[1], x000FAC03, sizeof(x000FAC03));
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WPA2-EAP+FT/EAP-CCMP][ESS][WPS]");
+  free(authmode);
+
+  memcpy(rsn->akm_cipher_suite[0], x000FAC02, sizeof(x000FAC02));
+  memcpy(rsn->akm_cipher_suite[1], x000FAC04, sizeof(x000FAC04));
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  assert_string_equal(authmode, "[WPA2-PSK+FT/PSK-CCMP][ESS][WPS]");
+  free(authmode);
+
+  // TODO: test with 4 akm suites
+  //1,2,3,4 => WPA2-EAP+PSK+FT/EAP+FT/PSK-CCMP+TKIP
+  //1,3,4,2 => WPA2-EAP+FT/EAP+FT/PSK+PSK-CCMP+TKIP
+  //1,3,2,4 => WPA2-EAP+FT/EAP+PSK+FT/PSK-CCMP+TKIP
+  //3,1,4,2 => WPA-FT/EAP+EAP+FT/PSK+PSK-CCMP+TKIP
+
+  // to free correctly previously allocated memory
+  rsn->pairwise_cipher_count = 2;
+  rsn->akm_cipher_count = 2;
+  free_cipher_suite(rsn);
+}
+
 int main(void) {
   const struct CMUnitTest tests[] = {
-    cmocka_unit_test(test_parse_beacon_frame),
+    cmocka_unit_test(test_parse_beacon_frame_from_pcap),
+    cmocka_unit_test(test_authmode_from_crypto),
   };
   return cmocka_run_group_tests(tests, NULL, NULL);
 }

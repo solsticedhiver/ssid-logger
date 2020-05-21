@@ -10,7 +10,8 @@ iface = 'wlp0s20u2'  # interface name here
 dot11 = Dot11(type=0, subtype=8, addr1='ff:ff:ff:ff:ff:ff', addr2='22:22:22:22:22:22', addr3='33:33:33:33:33:33')
 beacon = Dot11Beacon(cap='ESS+privacy')
 essid = Dot11Elt(ID='SSID',info=netSSID, len=len(netSSID))
-WPA2_PSK_CCMP_TKIP = [b'\x01\x00',
+WPA2_PSK_CCMP_TKIP = [
+    b'\x01\x00',
     b'\x00\x0f\xac\x04',
     b'\x02\x00',
     b'\x00\x0f\xac\x04',
@@ -18,7 +19,8 @@ WPA2_PSK_CCMP_TKIP = [b'\x01\x00',
     b'\x01\x00',
     b'\x00\x0f\xac\x02',
     b'\x00\x00']
-WPA2_PSK_FT_PSK_CCMP_TKIP = [b'\x01\x00',
+WPA2_PSK_FT_PSK_CCMP_TKIP = [
+    b'\x01\x00',
     b'\x00\x0f\xac\x04',
     b'\x02\x00',
     b'\x00\x0f\xac\x04',
@@ -27,7 +29,8 @@ WPA2_PSK_FT_PSK_CCMP_TKIP = [b'\x01\x00',
     b'\x00\x0f\xac\x02',
     b'\x00\x0f\xac\x04',
     b'\x00\x00']
-WPA2_EAP_FT_EAP_CCMP_TKIP = [b'\x01\x00',
+WPA2_EAP_FT_EAP_CCMP_TKIP = [
+    b'\x01\x00',
     b'\x00\x0f\xac\x04',
     b'\x02\x00',
     b'\x00\x0f\xac\x04',
@@ -36,7 +39,20 @@ WPA2_EAP_FT_EAP_CCMP_TKIP = [b'\x01\x00',
     b'\x00\x0f\xac\x01',
     b'\x00\x0f\xac\x03',
     b'\x00\x00']
-WPA2_PSK_SHA256_CCMP_TKIP = [b'\x01\x00',
+WPA2_EAP_FT_EAP_CCMP_TKIP_PSK_FT_PSK_CCMP_TKIP = [
+    b'\x01\x00',
+    b'\x00\x0f\xac\x04',
+    b'\x02\x00',
+    b'\x00\x0f\xac\x04',
+    b'\x00\x0f\xac\x02',
+    b'\x04\x00',
+    b'\x00\x0f\xac\x01',
+    b'\x00\x0f\xac\x03',
+    b'\x00\x0f\xac\x02',
+    b'\x00\x0f\xac\x04',
+    b'\x00\x00']
+WPA2_PSK_SHA256_CCMP_TKIP = [
+    b'\x01\x00',
     b'\x00\x0f\xac\x04',
     b'\x02\x00',
     b'\x00\x0f\xac\x04',
@@ -44,7 +60,17 @@ WPA2_PSK_SHA256_CCMP_TKIP = [b'\x01\x00',
     b'\x01\x00',
     b'\x00\x0f\xac\x06',
     b'\x00\x00']
-rsn_bytes = b''.join(WPA2_PSK_CCMP_TKIP)
+WPA2_PSK_FT_SHA256_CCMP_TKIP = [
+    b'\x01\x00',
+    b'\x00\x0f\xac\x04',
+    b'\x02\x00',
+    b'\x00\x0f\xac\x04',
+    b'\x00\x0f\xac\x02',
+    b'\x02\x00',
+    b'\x00\x0f\xac\x06',
+    b'\x00\x0f\xac\x08',
+    b'\x00\x00']
+rsn_bytes = b''.join(WPA2_PSK_FT_SHA256_CCMP_TKIP)
 rsn = Dot11Elt(ID='RSNinfo', info=rsn_bytes, len=len(rsn_bytes))
 
 frame = RadioTap()/dot11/beacon/essid/rsn
