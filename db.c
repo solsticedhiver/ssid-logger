@@ -128,7 +128,7 @@ int64_t insert_authmode(const char *authmode, sqlite3 *db)
 {
     // insert the authmode into the db
   int64_t ret, authmode_id = 0;
-  char sql[128];
+  char sql[65 + MAX_AUTHMODE_LEN];
 
   authmode_id = search_authmode(authmode, db);
   if (!authmode_id) {
@@ -231,6 +231,11 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *aut
   lruc_get(authmode_pk_cache, authmode, strlen(authmode), &value);
   if (value == NULL) {
     authmode_id = insert_authmode(authmode, db);
+    if (authmode_id < 0) {
+      // something is wrong ! probably authmode is too long
+      free(authmode);
+      return authmode_id;
+    }
     // insert authmode_id in authmode_pk_cache
     int64_t *new_value = malloc(sizeof(int64_t));
     *new_value = authmode_id;
