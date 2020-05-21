@@ -221,7 +221,9 @@ struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, i
         ap->channel = *(ie + 2);
         break;
       case 48:                 // parse RSN IE
-        ap->rsn = parse_cipher_suite(ie + 4);
+        if (*(ie+1) > 2) {
+          ap->rsn = parse_cipher_suite(ie + 4);
+        }
         break;
       case 127:                // Extended Capabilities IE
         if (ie_len >= 7) {
