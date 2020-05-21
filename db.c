@@ -8,6 +8,7 @@ Copyright © 2020 solsTiCe d'Hiver
 #include <string.h>
 #include <math.h>
 #include <inttypes.h>
+#include <libgen.h>
 
 #include "ap_info.h"
 #include "gps_thread.h"
@@ -18,7 +19,7 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
 {
   int ret;
   if ((ret = sqlite3_open(db_file, db)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
     sqlite3_close(*db);
     return ret;
   }
@@ -29,7 +30,7 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
     "mode text"
     ");";
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
     sqlite3_close(*db);
     return ret;
   }
@@ -40,7 +41,7 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
     "unique (bssid, ssid)"
     ");";
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
     sqlite3_close(*db);
     return ret;
   }
@@ -58,31 +59,31 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
     "foreign key(authmode) references authmode(id)"
     ");";
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
     sqlite3_close(*db);
     return ret;
   }
   sql = "pragma synchronous = normal;";
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
     sqlite3_close(*db);
     return ret;
   }
   sql = "pragma temp_store = 2;"; // to store temp table and indices in memory
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
     sqlite3_close(*db);
     return ret;
   }
   sql = "pragma journal_mode = off;"; // disable journal for rollback (we don't use this)
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
     sqlite3_close(*db);
     return ret;
   }
   sql = "pragma foreign_keys = on;"; // this needs to be turn on
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(*db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
     sqlite3_close(*db);
     return ret;
   }
@@ -99,22 +100,22 @@ int64_t search_authmode(const char *authmode, sqlite3 *db)
   // look for an existing ap_info in the db
   sql = "select id from authmode where mode=?;";
   if ((ret = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
     return ret * -1;
   } else {
     if ((ret = sqlite3_bind_text(stmt, 1, authmode, -1, NULL)) != SQLITE_OK) {
-      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+      fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
       return ret * -1;
     }
 
     while ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
       if (ret == SQLITE_ERROR) {
-        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
         break;
       } else if (ret == SQLITE_ROW) {
         authmode_id = sqlite3_column_int64(stmt, 0);
       } else {
-        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
         break;
       }
     }
@@ -133,7 +134,7 @@ int64_t insert_authmode(const char *authmode, sqlite3 *db)
   if (!authmode_id) {
     snprintf(sql, 128, "insert into authmode (mode) values (\"%s\");", authmode);
     if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
-      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+      fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
       sqlite3_close(db);
       return ret * -1;
     }
@@ -152,26 +153,26 @@ int64_t search_ap(struct ap_info ap, sqlite3 *db)
   // look for an existing ap_info in the db
   sql = "select id from ap where bssid=? and ssid=?;";
   if ((ret = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
     return ret * -1;
   } else {
     if ((ret = sqlite3_bind_text(stmt, 1, ap.bssid, -1, NULL)) != SQLITE_OK) {
-      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+      fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
       return ret * -1;
     }
     if ((ret = sqlite3_bind_text(stmt, 2, ap.ssid, -1, NULL)) != SQLITE_OK) {
-      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+      fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
       return ret * -1;
     }
 
     while ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
       if (ret == SQLITE_ERROR) {
-        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
         break;
       } else if (ret == SQLITE_ROW) {
         ap_id = sqlite3_column_int64(stmt, 0);
       } else {
-        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
         break;
       }
     }
@@ -191,7 +192,7 @@ int64_t insert_ap(struct ap_info ap, sqlite3 *db)
     // if ever the ssid is longer than 32 chars, it is truncated at 128-18-length of string below
     snprintf(sql, 128, "insert into ap (bssid, ssid) values (\"%s\", \"%s\");", ap.bssid, ap.ssid);
     if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
-      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+      fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
       sqlite3_close(db);
       return ret * -1;
     }
@@ -244,7 +245,7 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *aut
     "values (%lu, %"PRId64", %u, %d, %f, %f, %f, %f, %"PRId64");",
     gloc.ftime.tv_sec, ap_id, ap.channel, ap.rssi, gloc.lat, gloc.lon, isnan(gloc.alt) ? 0.0 : gloc.alt, gloc.acc, authmode_id);
   if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
     sqlite3_close(db);
     return ret * -1;
   }
@@ -259,7 +260,7 @@ int begin_txn(sqlite3 *db)
 
   snprintf(sql, 32, "begin transaction;");
   if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
     sqlite3_close(db);
     return ret * -1;
   }
@@ -274,7 +275,7 @@ int commit_txn(sqlite3 *db)
 
   snprintf(sql, 32, "commit transaction;");
   if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
     sqlite3_close(db);
     return ret * -1;
   }
