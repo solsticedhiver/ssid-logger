@@ -209,7 +209,7 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *aut
     // insert ap_id in ap_pk_cache
     int64_t *new_value = malloc(sizeof(int64_t));
     *new_value = ap_id;
-    lruc_set(ap_pk_cache, ap_key, ap_key_len, new_value, sizeof(int64_t));
+    lruc_set(ap_pk_cache, ap_key, ap_key_len, new_value, 1);
   } else {
     ap_id = *(int64_t *)value;
     free(ap_key);
@@ -229,7 +229,7 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *aut
     // insert authmode_id in authmode_pk_cache
     int64_t *new_value = malloc(sizeof(int64_t));
     *new_value = authmode_id;
-    lruc_set(authmode_pk_cache, authmode, strlen(authmode), new_value, sizeof(int64_t));
+    lruc_set(authmode_pk_cache, authmode, strlen(authmode), new_value, 1);
   } else {
     authmode_id = *(int64_t *)value;
     free(authmode);

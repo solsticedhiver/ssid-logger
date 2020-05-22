@@ -61,8 +61,8 @@ void *process_queue(void *args)
   #endif
 
   // init caches
-  authmode_pk_cache = lruc_new(AUTHMODE_CACHE_SIZE * sizeof(int64_t), sizeof(int64_t));
-  ap_pk_cache = lruc_new(AP_CACHE_SIZE * sizeof(int64_t), sizeof(int64_t));
+  authmode_pk_cache = lruc_new(AUTHMODE_CACHE_SIZE, 1);
+  ap_pk_cache = lruc_new(AP_CACHE_SIZE, 1);
 
   // push cleanup code when exiting thread
   pthread_cleanup_push(cleanup_caches, NULL);
