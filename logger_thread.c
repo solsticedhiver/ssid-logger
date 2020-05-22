@@ -67,6 +67,8 @@ void *process_queue(void *args)
   // push cleanup code when exiting thread
   pthread_cleanup_push(cleanup_caches, NULL);
 
+  clock_gettime(CLOCK_MONOTONIC, &start_ts_cache);
+
   while (true) {
     pthread_mutex_lock(&mutex_queue);
     pthread_cond_wait(&cv, &mutex_queue);
