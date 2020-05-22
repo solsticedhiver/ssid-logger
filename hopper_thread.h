@@ -9,7 +9,7 @@
 #define SLEEP_DURATION (1000/HOP_PER_SECOND)*100
 
 static const uint8_t CHANNELS[] =
-    { 1, 5, 9, 13, 2, 6, 10, 3, 7, 11, 4, 8, 12 };
+    {1, 7, 13, 2, 8, 14, 3, 9, 4, 10, 5, 11, 6, 12};
     // TODO: we need to query the wifi interface for the available channels
 
 extern void *hop_channel(void *arg);

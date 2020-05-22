@@ -84,7 +84,6 @@ void *hop_channel(void *arg)
   nla_put_failure:
     fprintf(stderr, "Error: failed to send netlink message\n");
     fflush(stderr);
-    sleep(1);
   }
 
   nlmsg_free(msg);
