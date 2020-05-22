@@ -35,5 +35,5 @@ if cmocka_dep.found()
   t = executable('parsers_test',
     ['tests/parsers_test.c', 'parsers.c', 'queue.c', 'db.c', 'lruc.c', 'radiotap.c', 'ap_info.c'],
     dependencies: [cmocka_dep, pcap_dep, sqlite3_dep])
-  test('Test parse_beacon_frame', t)
+  test('Test parsers', t)
 endif
