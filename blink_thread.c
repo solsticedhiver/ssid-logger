@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <pthread.h>
-#ifdef HAS_PRCTL_H
+#ifdef HAS_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
 
@@ -65,7 +65,7 @@ void *blink_forever(void *arg)
     return NULL;
   }
 
-  #ifdef HAS_PRCTL_H
+  #ifdef HAS_SYS_PRCTL_H
   // name our thread; using prctl instead of pthread_setname_np to avoid defining _GNU_SOURCE
   prctl(PR_SET_NAME, "blinker");
   #endif

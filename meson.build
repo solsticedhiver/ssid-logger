@@ -24,7 +24,10 @@ if get_option('blink_rpi0_led')
 endif
 
 if cc.has_header('sys/prctl.h')
-  add_project_arguments('-DHAS_PRCTL_H', language: 'c')
+  add_project_arguments('-DHAS_SYS_PRCTL_H', language: 'c')
+endif
+if cc.has_header('sys/stat.h')
+  add_project_arguments('-DHAS_SYS_STAT_H', language: 'c')
 endif
 
 executable('ssid-logger', src,

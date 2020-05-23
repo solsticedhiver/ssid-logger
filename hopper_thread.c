@@ -10,7 +10,7 @@ Copyright © 2020 solsTiCe d'Hiver
 #include <stdbool.h>
 #include <unistd.h>
 #include <pthread.h>
-#ifdef HAS_PRCTL_H
+#ifdef HAS_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
 
@@ -37,7 +37,7 @@ void *hop_channel(void *arg)
   uint8_t indx = 0;
   size_t chan_number = sizeof(CHANNELS) / sizeof(uint8_t);
 
-  #ifdef HAS_PRCTL_H
+  #ifdef HAS_SYS_PRCTL_H
   // name our thread; using prctl instead of pthread_setname_np to avoid defining _GNU_SOURCE
   prctl(PR_SET_NAME, "channel_hopper");
   #endif

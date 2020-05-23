@@ -28,6 +28,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <time.h>
 #include <sqlite3.h>
 #include <time.h>
+#ifdef HAS_SYS_STAT_H
+#include <sys/stat.h>
+#endif
 
 #include "queue.h"
 #include "hopper_thread.h"
@@ -354,7 +357,31 @@ int main(int argc, char *argv[])
       "CurrentLatitude,CurrentLongitude,AltitudeMeters,"
       "AccuracyMeters,Type\n");
   } else {
-    init_beacon_db(file_name, &db);
+    #ifdef HAS_SYS_STAT_H
+    if (access(file_name, F_OK) == 0) {
+      // file exits, so double check it has writable permission
+      struct stat perm;
+      stat(file_name, &perm);
+      if (!(perm.st_mode & S_IWUSR)) {
+        // abort because the file does exist but is not writable. sqlite3 will not write to it
+        fprintf(stderr, "Error: %s is not writable\n", file_name);
+        db = NULL;
+        #ifdef BLINK_LED
+        goto blink_failure;
+        #else
+        goto gps_init_failure;
+        #endif
+      }
+    }
+    #endif
+    if (init_beacon_db(file_name, &db) != SQLITE_OK) {
+      db = NULL;
+      #ifdef BLINK_LED
+      goto blink_failure;
+      #else
+      goto gps_init_failure;
+      #endif
+    }
     begin_txn(db);
   }
 
@@ -390,8 +417,10 @@ logger_failure:
   if (format_csv) {
     fclose(file_ptr);
   } else {
-    commit_txn(db);
-    sqlite3_close(db);
+    if (db != NULL) {
+      commit_txn(db);
+      sqlite3_close(db);
+    }
   }
 
   // free up elements of the queue

@@ -20,6 +20,7 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
   int ret;
   if ((ret = sqlite3_open(db_file, db)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
+    sqlite3_close(*db);
     return ret;
   }
 
@@ -30,6 +31,7 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
     ");";
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
+    sqlite3_close(*db);
     return ret;
   }
   sql = "create table if not exists ap("
@@ -40,6 +42,7 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
     ");";
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
+    sqlite3_close(*db);
     return ret;
   }
   sql = "create table if not exists beacon("
@@ -57,6 +60,7 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
     ");";
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
+    sqlite3_close(*db);
     return ret;
   }
   sql = "pragma synchronous = normal;";
@@ -67,16 +71,19 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
   sql = "pragma temp_store = 2;"; // to store temp table and indices in memory
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
+    sqlite3_close(*db);
     return ret;
   }
   sql = "pragma journal_mode = off;"; // disable journal for rollback (we don't use this)
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
+    sqlite3_close(*db);
     return ret;
   }
   sql = "pragma foreign_keys = on;"; // this needs to be turn on
   if ((ret = sqlite3_exec(*db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(*db), basename(__FILE__), __LINE__, __func__);
+    sqlite3_close(*db);
     return ret;
   }
 
