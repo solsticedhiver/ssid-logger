@@ -51,7 +51,7 @@ void cleanup_caches(void *arg)
 void *process_queue(void *args)
 {
   struct ap_info *ap;
-  struct ap_info **aps;
+  struct ap_info *aps[MAX_QUEUE_SIZE];
   int qs;
   struct timespec now;
 
@@ -74,7 +74,6 @@ void *process_queue(void *args)
     pthread_cond_wait(&cv, &mutex_queue);
 
     qs = queue->size;
-    aps = malloc(sizeof(struct ap_info *) * qs);
     // off-load queue to a tmp array
     for (int i = 0; i < qs; i++) {
       aps[i] = (struct ap_info *) dequeue(queue);
@@ -123,10 +122,8 @@ void *process_queue(void *args)
     }
     // free the tmp array of ap_info
     for (int j = 0; j < qs; j++) {
-      ap = aps[j];
-      free_ap_info(ap);
+      free_ap_info(aps[j]);
     }
-    free(aps);
   }
 
   pthread_cleanup_pop(1);
