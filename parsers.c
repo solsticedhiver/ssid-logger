@@ -254,7 +254,7 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
   authmode[0] = '\0';           // this is needed for strcat to work
   uint8_t last_byte;
   size_t length = MAX_AUTHMODE_LEN - 1;
-  bool is_eap_ft = false, is_psk_ft = false, add_pc = false;
+  bool eap_ft = false, psk_ft = false, add_pc = false;
 
   if (msw != NULL) {
     strncat(authmode, "[WPA-", length);
@@ -302,9 +302,7 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
     length -= 1;
   }
   if (rsn != NULL) {
-    strncat(authmode, "[", length);
-    length -= 1;
-    strncat(authmode, "WPA2-", length);
+    strncat(authmode, "[WPA2-", length);
     length -= 6;
     for (int j=0; j<rsn->akm_cipher_count; j++) {
       last_byte = (uint8_t) rsn->akm_cipher_suite[j][3];
@@ -320,10 +318,10 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
         length -= 4;
         break;
       case 3  :
-        is_eap_ft = true;
+        eap_ft = true;
         break;
       case 4:
-        is_psk_ft = true;
+        psk_ft = true;
         break;
       case 5:
         strncat(authmode, "EAP-SHA256-", length);
@@ -375,13 +373,13 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
     strncat(authmode, "]", length);
     length -= 1;
   }
-  if (is_eap_ft) {
+  if (eap_ft) {
     char *tmp = str_replace(authmode, "WPA2-EAP-","WPA2-EAP+FT/EAP-");
     strcpy(authmode, tmp);
     free(tmp);
     length -= 7;
   }
-  if (is_psk_ft) {
+  if (psk_ft) {
     char *tmp = str_replace(authmode, "WPA2-PSK-","WPA2-PSK+FT/PSK-");
     strcpy(authmode, tmp);
     free(tmp);

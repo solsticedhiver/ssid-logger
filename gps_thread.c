@@ -124,8 +124,7 @@ void *retrieve_gps_data(void *arg)
       #endif
       if ((ret > 0) && gps_data.set && (status == STATUS_FIX)
           && ((gps_data.fix.mode == MODE_2D) || (gps_data.fix.mode == MODE_3D ))
-          && !isnan(gps_data.fix.latitude)
-          && !isnan(gps_data.fix.longitude)) {
+          && !isnan(gps_data.fix.latitude) && !isnan(gps_data.fix.longitude)) {
         pthread_mutex_lock(&mutex_gloc);
         if (!has_gps_got_fix) has_gps_got_fix = true;
         update_gloc(gps_data);
