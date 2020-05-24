@@ -102,7 +102,7 @@ void free_cipher_suite(struct cipher_suite *cs)
   return;
 }
 
-struct cipher_suite *parse_cipher_suite(uint8_t * start)
+struct cipher_suite *parse_cipher_suite(uint8_t *start)
 {
   struct cipher_suite *cs = malloc(sizeof(struct cipher_suite));
 
@@ -124,7 +124,7 @@ struct cipher_suite *parse_cipher_suite(uint8_t * start)
   return cs;
 }
 
-int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq, int8_t * rssi)
+int8_t parse_radiotap_header(const uint8_t *packet, uint16_t *freq, int8_t *rssi)
 {
   // parse radiotap header to get frequency and rssi
   // returns radiotap header size or -1 on error
@@ -133,8 +133,9 @@ int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq, int8_t * r
   int8_t offset = (int8_t) rtaphdr->it_len;
 
   struct ieee80211_radiotap_iterator iter;
+  uint16_t tf = 0;
   //uint16_t flags = 0;
-  int8_t r;
+  int8_t r, tr = 0;
 
   static const struct radiotap_align_size align_size_000000_00[] = {
     [0] = {.align = 1,.size = 4, },
@@ -155,31 +156,31 @@ int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq, int8_t * r
     .n_ns = sizeof(vns_array) / sizeof(vns_array[0]),
   };
 
-  int err =
-      ieee80211_radiotap_iterator_init(&iter, rtaphdr, rtaphdr->it_len,
-                                       &vns);
+  int err = ieee80211_radiotap_iterator_init(&iter, rtaphdr, rtaphdr->it_len, &vns);
   if (err) {
     printf("Error: malformed radiotap header (init returned %d)\n", err);
+    *freq = tf;
+    *rssi = tr;
     return -1;
   }
 
-  *freq = 0;
-  *rssi = 0;
   // iterate through radiotap fields and look for frequency and rssi
   while (!(err = ieee80211_radiotap_iterator_next(&iter))) {
     if (iter.this_arg_index == IEEE80211_RADIOTAP_CHANNEL) {
       assert(iter.this_arg_size == 4);  // XXX: why ?
-      *freq = iter.this_arg[0] + (iter.this_arg[1] << 8);
+      tf = iter.this_arg[0] + (iter.this_arg[1] << 8);
       //flags = iter.this_arg[2] + (iter.this_arg[3] << 8);
     }
     if (iter.this_arg_index == IEEE80211_RADIOTAP_DBM_ANTSIGNAL) {
       r = (int8_t) * iter.this_arg;
       if (r != 0)
-        *rssi = r;              // XXX: why do we get multiple dBm_antSignal with 0 value after the first one ?
+        tr = r;              // XXX: why do we get multiple dBm_antSignal with 0 value after the first one ?
     }
-    if (*freq != 0 && *rssi != 0)
+    if (tf != 0 && tr != 0)
       break;
   }
+  *freq = tf;
+  *rssi = tr;
   return offset;
 }
 
@@ -202,7 +203,7 @@ struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, i
 
   ap->ssid = NULL;
   uint8_t *ie = (uint8_t *) ci_addr + 2;
-  uint8_t ie_len = *(ie + 1);
+  uint8_t ie_len;
   ap->channel = 0, ap->ssid_len = 0;
   ap->wps = false/*, utf8_ssid = false*/;
 
@@ -210,10 +211,11 @@ struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, i
   ap->msw = NULL;
   // iterate over Information Element to look for SSID and RSN crypto and MicrosoftWPA
   while (ie < packet + packet_len) {
+    ie_len = *(ie + 1);
     if ((ie + ie_len + 2 <= packet + packet_len)) {     // just double check that this is an IE with length inside packet
       switch (*ie) {
       case 0:                  // SSID aka IE with id 0
-        ap->ssid_len = *(ie + 1);
+        ap->ssid_len = ie_len;
         ap->ssid = (char *) malloc((ap->ssid_len + 1) * sizeof(uint8_t));        // AP name
         snprintf(ap->ssid, ap->ssid_len + 1, "%s", ie + 2);
         break;
@@ -221,7 +223,7 @@ struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, i
         ap->channel = *(ie + 2);
         break;
       case 48:                 // parse RSN IE
-        if (*(ie+1) > 2) {
+        if (ie_len > 2) {
           ap->rsn = parse_cipher_suite(ie + 4);
         }
         break;
@@ -241,7 +243,6 @@ struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, i
       }
     }
     ie = ie + ie_len + 2;
-    ie_len = *(ie + 1);
   }
   return ap;
 }
