@@ -31,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifdef HAS_SYS_STAT_H
 #include <sys/stat.h>
 #endif
+#include <semaphore.h>
 
 #include "queue.h"
 #include "hopper_thread.h"
@@ -57,8 +58,9 @@ bool has_gps_got_fix = false;
 pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_gloc = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_gtr = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cv_gtr = PTHREAD_COND_INITIALIZER;
+sem_t queue_empty;
+sem_t queue_full;
 struct timespec start_ts_queue;
 
 sqlite3 *db = NULL;
@@ -87,16 +89,11 @@ void process_packet(uint8_t * args, const struct pcap_pkthdr *header, const uint
   ap->freq = freq;
   ap->rssi = rssi;
 
+  sem_wait(&queue_full);
   pthread_mutex_lock(&mutex_queue);
   enqueue(queue, ap);
-  struct timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
-  if (queue->size == MAX_QUEUE_SIZE / 2 || now.tv_sec - start_ts_queue.tv_sec >= 1) {
-    start_ts_queue = now;
-    // the queue is half full or it's been more than a second; waking up the logger thread to process that
-    pthread_cond_signal(&cv);
-  }
   pthread_mutex_unlock(&mutex_queue);
+  sem_post(&queue_empty);
 }
 
 void usage(void)
@@ -295,6 +292,8 @@ int main(int argc, char *argv[])
   pthread_detach(hopper);
 
   queue = new_queue(MAX_QUEUE_SIZE);
+  sem_init(&queue_empty, 0, 0);
+  sem_init(&queue_full, 0, MAX_QUEUE_SIZE);
   // start the helper logger thread
   if (pthread_create(&logger, NULL, process_queue, NULL)) {
     fprintf(stderr, "Error creating logger thread\n");
@@ -414,6 +413,9 @@ gps_failure:
 logger_failure:
   pthread_cancel(logger);
 
+  sem_destroy(&queue_full);
+  sem_destroy(&queue_empty);
+
   if (format_csv) {
     fclose(file_ptr);
   } else {
@@ -436,7 +438,6 @@ hopper_failure:
   pthread_cancel(hopper);
   pthread_mutex_destroy(&mutex_queue);
   pthread_mutex_destroy(&mutex_gloc);
-  pthread_cond_destroy(&cv);
 
   pcap_close(handle);
 

@@ -14,6 +14,7 @@ Copyright © 2020 solsTiCe d'Hiver
 #ifdef HAS_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
+#include <semaphore.h>
 
 #include "parsers.h"
 #include "queue.h"
@@ -26,10 +27,11 @@ Copyright © 2020 solsTiCe d'Hiver
 #define AUTHMODE_CACHE_SIZE 32
 #define AP_CACHE_SIZE 64
 
-extern pthread_cond_t cv;
 extern pthread_mutex_t mutex_queue;
 extern pthread_mutex_t mutex_gloc;
 extern queue_t *queue;
+extern sem_t queue_empty;
+extern sem_t queue_full;
 extern struct gps_loc gloc;            // global variable to hold retrieved gps data
 extern sqlite3 *db;
 struct timespec start_ts_cache;
@@ -51,9 +53,8 @@ void cleanup_caches(void *arg)
 void *process_queue(void *args)
 {
   struct ap_info *ap;
-  struct ap_info *aps[MAX_QUEUE_SIZE];
-  int qs;
   struct timespec now;
+  struct gps_loc tmp_gloc;
 
   #ifdef HAS_SYS_PRCTL_H
   // name our thread; using prctl instead of pthread_setname_np to avoid defining _GNU_SOURCE
@@ -70,42 +71,36 @@ void *process_queue(void *args)
   clock_gettime(CLOCK_MONOTONIC, &start_ts_cache);
 
   while (true) {
+    sem_wait(&queue_empty);
     pthread_mutex_lock(&mutex_queue);
-    pthread_cond_wait(&cv, &mutex_queue);
-
-    qs = queue->size;
-    // off-load queue to a tmp array
-    for (int i = 0; i < qs; i++) {
-      aps[i] = (struct ap_info *) dequeue(queue);
-    }
-    assert(queue->size == 0);
+    ap = (struct ap_info *) dequeue(queue);
     pthread_mutex_unlock(&mutex_queue);
+    sem_post(&queue_full);
 
-    // process the array after having unlock the queue
-    for (int j = 0; j < qs; j++) {
-      ap = aps[j];
-      pthread_mutex_lock(&mutex_gloc);
-      if (option_gps == GPS_LOG_ZERO) {
-        gloc.lat = gloc.lon = gloc.alt = gloc.acc = 0.0;
-        // use system time because we can't use gps fix time
-        clock_gettime(CLOCK_REALTIME, &gloc.ftime);
-      } else if (option_gps == GPS_LOG_ALL) {
-        if (!gloc.lat || !gloc.lon) {
-          gloc.lat = gloc.lon = gloc.alt = gloc.acc = 0.0;
-        }
+    // process the ap_info
+    pthread_mutex_lock(&mutex_gloc);
+    tmp_gloc = gloc;
+    pthread_mutex_unlock(&mutex_gloc);
+    if (option_gps == GPS_LOG_ZERO) {
+      tmp_gloc.lat = tmp_gloc.lon = tmp_gloc.alt = tmp_gloc.acc = 0.0;
+      // use system time because we can't use gps fix time
+      clock_gettime(CLOCK_REALTIME, &tmp_gloc.ftime);
+    } else if (option_gps == GPS_LOG_ALL) {
+      if (!tmp_gloc.lat || !tmp_gloc.lon) {
+        tmp_gloc.lat = tmp_gloc.lon = tmp_gloc.alt = tmp_gloc.acc = 0.0;
       }
-      if (((option_gps == GPS_LOG_ONZ) && gloc.lat && gloc.lon)
-        || (option_gps == GPS_LOG_ALL) || (option_gps == GPS_LOG_ZERO)) {
-        if (!format_csv) {
-          insert_beacon(*ap, gloc, db, authmode_pk_cache, ap_pk_cache);
-        } else {
-          char *tmp = ap_to_str(*ap, gloc);
-          fprintf(file_ptr, "%s\n", tmp);
-          free(tmp);
-        }
-      }
-      pthread_mutex_unlock(&mutex_gloc);
     }
+    if (((option_gps == GPS_LOG_ONZ) && tmp_gloc.lat && tmp_gloc.lon)
+      || (option_gps == GPS_LOG_ALL) || (option_gps == GPS_LOG_ZERO)) {
+      if (!format_csv) {
+        insert_beacon(*ap, tmp_gloc, db, authmode_pk_cache, ap_pk_cache);
+      } else {
+        char *tmp = ap_to_str(*ap, tmp_gloc);
+        fprintf(file_ptr, "%s\n", tmp);
+        free(tmp);
+      }
+    }
+    free_ap_info(ap);
 
     // commit our data if time elapsed is greater than DB_CACHE_TIME
     clock_gettime(CLOCK_MONOTONIC, &now);
@@ -119,10 +114,6 @@ void *process_queue(void *args)
         begin_txn(db);
       }
       start_ts_cache = now;
-    }
-    // free the tmp array of ap_info
-    for (int j = 0; j < qs; j++) {
-      free_ap_info(aps[j]);
     }
   }
 
