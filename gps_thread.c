@@ -22,6 +22,7 @@ extern pthread_mutex_t mutex_gtr;
 extern pthread_mutex_t mutex_gloc;
 extern pthread_cond_t cv_gtr;
 extern bool has_gps_got_fix;
+// global variable to hold the gps data retrieved by the GPS device
 struct gps_loc gloc;
 
 void cleanup_gps_data(void *arg)
@@ -122,6 +123,7 @@ void *retrieve_gps_data(void *arg)
       ret = gps_read(&gps_data);
       status = gps_data.status;
       #endif
+      // test everything is right
       if ((ret > 0) && gps_data.set && (status == STATUS_FIX)
           && ((gps_data.fix.mode == MODE_2D) || (gps_data.fix.mode == MODE_3D ))
           && !isnan(gps_data.fix.latitude) && !isnan(gps_data.fix.longitude)) {

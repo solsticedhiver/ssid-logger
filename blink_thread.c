@@ -13,6 +13,7 @@
 
 extern bool has_gps_got_fix;
 
+// echo a value in a file
 int static inline echo_value(const char *path, int value)
 {
   FILE *fp = fopen(path, "w");

@@ -47,18 +47,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "config.h"
 
 pcap_t *handle;                 // global, to use it in sigint_handler
-queue_t *queue;                 // queue to hold parsed ap infos
+queue_t *queue;                 // queue to hold parsed ap_info
 
 pthread_t hopper;
 pthread_t logger;
 pthread_t gps;
+#ifdef BLINK_LED
 pthread_t blink;
+#endif
 int gps_thread_init_result = 0;
 bool has_gps_got_fix = false;
 pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_gloc = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_gtr = PTHREAD_MUTEX_INITIALIZER;
+// to manage the return value of retrieve_gps_data thread
 pthread_cond_t cv_gtr = PTHREAD_COND_INITIALIZER;
+// semaphores to synchronise consumer (process_queue) and producer (process_packet)
 sem_t queue_empty;
 sem_t queue_full;
 
@@ -74,6 +78,7 @@ void sigint_handler(int s)
   pcap_breakloop(handle);
 }
 
+// produces ap_info that are stored in the queue
 void process_packet(uint8_t * args, const struct pcap_pkthdr *header, const uint8_t *packet)
 {
   uint16_t freq;
@@ -183,7 +188,7 @@ void initialize_pcap(pcap_t **handle, const char *iface)
 {
   char errbuf[PCAP_ERRBUF_SIZE];
 
-  // just check if iface is in the list of known devices
+  // check if iface is in the list of known devices
   pcap_if_t *devs = NULL;
   if (pcap_findalldevs(&devs, errbuf) == 0) {
     pcap_if_t *d = devs;
@@ -221,6 +226,7 @@ void initialize_pcap(pcap_t **handle, const char *iface)
     exit(EXIT_FAILURE);
   }
 
+  // check if interface/driver can deliver radiotap header
   int *dlt_buf, dlt_buf_len;
   dlt_buf_len = pcap_list_datalinks(*handle, &dlt_buf);
   if (dlt_buf_len < 0) {
@@ -235,6 +241,7 @@ void initialize_pcap(pcap_t **handle, const char *iface)
   }
   pcap_free_datalinks(dlt_buf);
 
+  // explicitly set the datalink to radiotap header
   if (found) {
     if (pcap_set_datalink(*handle, DLT_IEEE802_11_RADIO)) {
       pcap_perror(*handle, "Error: ");
@@ -290,6 +297,8 @@ int main(int argc, char *argv[])
   }
   pthread_detach(hopper);
 
+  // the queue holds the ap_info produced by process_packet
+  // the semaphores manage the synchronisation with process_queue (in logger_thread)
   queue = new_queue(MAX_QUEUE_SIZE);
   sem_init(&queue_empty, 0, 0);
   sem_init(&queue_full, 0, MAX_QUEUE_SIZE);
@@ -311,6 +320,7 @@ int main(int argc, char *argv[])
   // this is a little over-kill but is there a better way ?
   pthread_mutex_lock(&mutex_gtr);
   pthread_cond_wait(&cv_gtr, &mutex_gtr);
+  // wait for the gps thread init status
   if (gps_thread_init_result == 2) {
     // gps thread can't find gpsd
     ret = EXIT_FAILURE;
