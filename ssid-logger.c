@@ -61,7 +61,6 @@ pthread_mutex_t mutex_gtr = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cv_gtr = PTHREAD_COND_INITIALIZER;
 sem_t queue_empty;
 sem_t queue_full;
-struct timespec start_ts_queue;
 
 sqlite3 *db = NULL;
 bool format_csv = false;
@@ -338,8 +337,6 @@ int main(int argc, char *argv[])
   // catch quit signal to flush data to file on disk
   sigaction(SIGQUIT, &act, NULL);
   sigaction(SIGTERM, &act, NULL);
-
-  clock_gettime(CLOCK_MONOTONIC, &start_ts_queue);
 
   if (format_csv) {
     // write pre-header and header
