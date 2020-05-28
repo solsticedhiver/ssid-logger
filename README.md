@@ -9,6 +9,8 @@ You will need a **wifi card** that is able to run in **monitor mode** and a GPS 
 
 It can log to a **sqlite3** database (by default) or to a **csv** file.
 
+This is an **all-in-one** solution to log SSIDs. Even though *kismet* is a great software, it is too heavy to run on a rpi0, unless you run only the capture binary(ies) and also use another more capable device to run the server on.
+
 Note: ssid-logger does not automatically export the collected data to wigle.net. You will have to do it manually, if you want to.
 
 ## Running
