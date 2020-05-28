@@ -253,7 +253,7 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
   char authmode[MAX_AUTHMODE_LEN];
   authmode[0] = '\0';           // this is needed for strcat to work
   uint8_t last_byte;
-  size_t length = MAX_AUTHMODE_LEN - 1;
+  long int length = MAX_AUTHMODE_LEN - 1;
   bool eap_ft = false, psk_ft = false, add_pc = false;
 
   if (msw != NULL) {
@@ -306,6 +306,10 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
     length -= 6;
     for (int j=0; j<rsn->akm_cipher_count; j++) {
       last_byte = (uint8_t) rsn->akm_cipher_suite[j][3];
+      if (length < 0) {
+        // overflow
+        return NULL;
+      }
       switch (last_byte) {
       case 1:
         strncat(authmode, "EAP-", length);
@@ -339,6 +343,10 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
         bool first_pc = true;
         for (int i = 0; i < rsn->pairwise_cipher_count; i++) {
           last_byte = (uint8_t) rsn->pairwise_cipher_suite[i][3];
+          if (length < 0) {
+            // overflow
+            return NULL;
+          }
           if (!first_pc) {
             strncat(authmode, "+", length);
             length -= 1;
@@ -374,14 +382,18 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
     length -= 1;
   }
   if (eap_ft) {
+    eap_ft = false;
     char *tmp = str_replace(authmode, "WPA2-EAP-","WPA2-EAP+FT/EAP-");
-    strcpy(authmode, tmp);
+    strncpy(authmode, tmp, MAX_AUTHMODE_LEN);
+    authmode[MAX_AUTHMODE_LEN - 1] = '\0';
     free(tmp);
     length -= 7;
   }
   if (psk_ft) {
+    psk_ft = false;
     char *tmp = str_replace(authmode, "WPA2-PSK-","WPA2-PSK+FT/PSK-");
-    strcpy(authmode, tmp);
+    strncpy(authmode, tmp, MAX_AUTHMODE_LEN);
+    authmode[MAX_AUTHMODE_LEN - 1] = '\0';
     free(tmp);
     length -= 7;
   }
@@ -407,6 +419,9 @@ char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
   char *authmode, *ap_str;
 
   authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
+  if (authmode == NULL) {
+    authmode = strdup("");
+  }
   strftime(firstseen, 20, "%Y-%m-%d %H:%M:%S", gmtime(&gloc.ftime.tv_sec));
   sprintf(tail, "%d,%d,%-2.6f,%-2.6f,%-2.6f,%-2.6f,WIFI", ap.channel, ap.rssi, gloc.lat,
     gloc.lon, gloc.alt, gloc.acc);

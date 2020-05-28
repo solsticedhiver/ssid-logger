@@ -225,6 +225,9 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *aut
   value = NULL;
   // look for authmode in authmode_pk_cache
   char *authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
+  if (authmode == NULL) {
+    authmode = strdup("");
+  }
   lruc_get(authmode_pk_cache, authmode, strlen(authmode), &value);
   if (value == NULL) {
     authmode_id = insert_authmode(authmode, db);

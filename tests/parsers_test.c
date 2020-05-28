@@ -65,7 +65,7 @@ static void test_parse_beacon_frame_from_pcap(void **state)
   pcap_t *handle = pcap_open_offline(PCAP_FILE, errbuf);
   assert_non_null(handle);
   if (!handle) {
-    fprintf(stderr, "Error: %s", errbuf);
+    fprintf(stderr, "Error: can't open pcap file");
     return;
   }
   struct pcap_pkthdr *header;
@@ -204,8 +204,21 @@ static void test_authmode_from_crypto(void **state)
   //1,3,2,4 => WPA2-EAP+FT/EAP+PSK+FT/PSK-CCMP+TKIP
   //3,1,4,2 => WPA-FT/EAP+EAP+FT/PSK+PSK-CCMP+TKIP
 
+  // try a a buffer overflow
+  rsn->pairwise_cipher_count = 64;
+  rsn->pairwise_cipher_suite = realloc(rsn->pairwise_cipher_suite, sizeof(uint8_t *)* rsn->pairwise_cipher_count);
+  for (int i=2; i<rsn->pairwise_cipher_count; i++) {
+    rsn->pairwise_cipher_suite[i] = malloc(sizeof(uint8_t) * 4);
+    memcpy(rsn->pairwise_cipher_suite[i], x000FAC04, sizeof(x000FAC04));
+  }
+  authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
+  if (authmode != NULL) {
+    assert_true(strlen(authmode) <= MAX_AUTHMODE_LEN);
+    free(authmode);
+  }
+
   // to free correctly previously allocated memory
-  rsn->pairwise_cipher_count = 2;
+  //rsn->pairwise_cipher_count = 2;
   rsn->akm_cipher_count = 2;
   free_cipher_suite(rsn);
 }

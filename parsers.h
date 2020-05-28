@@ -11,7 +11,7 @@
 #define MS_OUI "\000\120\362"   // 0x000x500xF2 or 00-50-F2
 #define WPS_ID "\000\120\362\004"       // 0x000x500xF20x04 or 00-50-F2-04
 
-#define MAX_AUTHMODE_LEN 128
+#define MAX_AUTHMODE_LEN 128L
 
 struct cipher_suite {
   uint8_t group_cipher_suite[4];
