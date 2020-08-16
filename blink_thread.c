@@ -6,12 +6,9 @@
 #include <sys/prctl.h>
 #endif
 
-#define BRIGHTNESS "/sys/class/leds/led0/brightness"
-#define FLASH_DURATION 500000 // in microseconds
-#define LONG_WAIT 5 // in seconds
-#define SHORT_WAIT 1 // in seconds
+#include "config.h"
 
-extern bool has_gps_got_fix;
+extern unsigned int blink_led_pause;
 
 // echo a value in a file
 int static inline echo_value(const char *path, int value)
@@ -43,8 +40,8 @@ void cleanup_led_state(void *arg)
 }
 
 /*
- * will blink the led every LONG_WAIT seconds until the gps fix is acquired
- * then will blink every SHORT_WAIT seconds
+ * will blink the led every LONG_PAUSE seconds until the gps fix is acquired
+ * then will blink every SHORT_PAUSE seconds
  * by default, blink every 5 seconds, then every second
  *
  * for this to be visible and effective, one needs to use in /boot/config.txt
@@ -53,8 +50,6 @@ void cleanup_led_state(void *arg)
  */
 void *blink_forever(void *arg)
 {
-  unsigned int wait = LONG_WAIT;
-
   if (access(BRIGHTNESS, F_OK) == -1) {
     // abort because the file does not exist
     fprintf(stderr, "Error: %s does not exist\n", BRIGHTNESS);
@@ -78,8 +73,7 @@ void *blink_forever(void *arg)
     turn_led_on();
     usleep(FLASH_DURATION);
     turn_led_off();
-    sleep(wait);
-    if (has_gps_got_fix) wait = SHORT_WAIT;
+    sleep(blink_led_pause);
   }
 
   pthread_cleanup_pop(1);

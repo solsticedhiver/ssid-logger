@@ -14,4 +14,9 @@
 #define GPSD_HOST "localhost"
 #define GPSD_PORT "2947"
 
+#define BRIGHTNESS "/sys/class/leds/led0/brightness"
+#define FLASH_DURATION 500000 // in microseconds
+#define LONG_PAUSE 5 // in seconds
+#define SHORT_PAUSE 1 // in seconds
+
 #endif

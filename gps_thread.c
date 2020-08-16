@@ -15,15 +15,18 @@ Copyright © 2020 solsTiCe d'Hiver
 #include <sys/prctl.h>
 #endif
 
+#include "config.h"
 #include "gps_thread.h"
 
 extern int gps_thread_init_result;
 extern pthread_mutex_t mutex_gtr;
 extern pthread_mutex_t mutex_gloc;
 extern pthread_cond_t cv_gtr;
-extern bool has_gps_got_fix;
 // global variable to hold the gps data retrieved by the GPS device
 struct gps_loc gloc;
+
+bool has_gps_got_fix;
+unsigned int blink_led_pause = LONG_PAUSE;
 
 void cleanup_gps_data(void *arg)
 {
@@ -128,7 +131,10 @@ void *retrieve_gps_data(void *arg)
           && ((gps_data.fix.mode == MODE_2D) || (gps_data.fix.mode == MODE_3D ))
           && !isnan(gps_data.fix.latitude) && !isnan(gps_data.fix.longitude)) {
         pthread_mutex_lock(&mutex_gloc);
-        if (!has_gps_got_fix) has_gps_got_fix = true;
+        if (!has_gps_got_fix) {
+          has_gps_got_fix = true;
+          blink_led_pause = SHORT_PAUSE;
+        }
         update_gloc(gps_data);
         pthread_mutex_unlock(&mutex_gloc);
       }

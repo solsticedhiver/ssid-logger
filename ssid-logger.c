@@ -56,7 +56,6 @@ pthread_t gps;
 pthread_t blink;
 #endif
 int gps_thread_init_result = 0;
-bool has_gps_got_fix = false;
 pthread_mutex_t mutex_queue = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_gloc = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_gtr = PTHREAD_MUTEX_INITIALIZER;
