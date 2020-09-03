@@ -25,7 +25,7 @@ extern pthread_cond_t cv_gtr;
 // global variable to hold the gps data retrieved by the GPS device
 struct gps_loc gloc;
 
-bool has_gps_got_fix;
+bool has_gps_got_fix = false;
 unsigned int blink_led_pause = LONG_PAUSE;
 
 void cleanup_gps_data(void *arg)
@@ -45,21 +45,21 @@ static inline int update_gloc(struct gps_data_t gps_data)
   gloc.lat = gps_data.fix.latitude;
   gloc.lon = gps_data.fix.longitude;
   #if GPSD_API_MAJOR_VERSION >= 9
-  gloc.alt = isnan(gps_data.fix.altMSL) ? 0.0 : gps_data.fix.altMSL;
-  gloc.ftime = gps_data.fix.time;
-  if (!isnan(gps_data.fix.eph)) {
-    gloc.acc = gps_data.fix.eph;
-  } else {
-    gloc.acc = 0.0;
-  }
+    gloc.alt = isnan(gps_data.fix.altMSL) ? 0.0 : gps_data.fix.altMSL;
+    gloc.ftime = gps_data.fix.time;
+    if (!isnan(gps_data.fix.eph)) {
+      gloc.acc = gps_data.fix.eph;
+    } else {
+      gloc.acc = 0.0;
+    }
   #else
-  gloc.alt = isnan(gps_data.fix.altitude) ? 0.0 : gps_data.fix.altitude;
-  gloc.ftime.tv_sec = (time_t)gps_data.fix.time;
-  if (!isnan(gps_data.fix.epx) && !isnan(gps_data.fix.epy)) {
-    gloc.acc = (gps_data.fix.epx + gps_data.fix.epy)/2;
-  } else {
-    gloc.acc = 0.0;
-  }
+    gloc.alt = isnan(gps_data.fix.altitude) ? 0.0 : gps_data.fix.altitude;
+    gloc.ftime.tv_sec = (time_t)gps_data.fix.time;
+    if (!isnan(gps_data.fix.epx) && !isnan(gps_data.fix.epy)) {
+      gloc.acc = (gps_data.fix.epx + gps_data.fix.epy)/2;
+    } else {
+      gloc.acc = 0.0;
+    }
   #endif
   // we use the system clock to avoid problem if
   // the system clock and the gps time are not in sync
@@ -115,16 +115,15 @@ void *retrieve_gps_data(void *arg)
     gloc.lat = gloc.lon = gloc.alt = gloc.acc = 0.0;
     // wait at most for 1 second to receive data
     if (gps_waiting(&gps_data, 1000000)) {
-      #if GPSD_API_MAJOR_VERSION >= 7
-      ret = gps_read(&gps_data, NULL, 0);
-        #if GPSD_API_MAJOR_VERSION >= 10
+      #if GPSD_API_MAJOR_VERSION >= 10
         status = gps_data.fix.status;
-        #else
+        ret = gps_read(&gps_data, NULL, 0);
+      #elif GPSD_API_MAJOR_VERSION >= 7
         status = gps_data.status;
-        #endif
+        ret = gps_read(&gps_data, NULL, 0);
       #else
-      ret = gps_read(&gps_data);
-      status = gps_data.status;
+        status = gps_data.status;
+        ret = gps_read(&gps_data);
       #endif
       // test everything is right
       if ((ret > 0) && gps_data.set && (status == STATUS_FIX)
