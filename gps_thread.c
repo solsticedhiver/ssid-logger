@@ -45,24 +45,24 @@ static inline int update_gloc(struct gps_data_t gps_data)
   gloc.lat = gps_data.fix.latitude;
   gloc.lon = gps_data.fix.longitude;
   #if GPSD_API_MAJOR_VERSION >= 9
-    gloc.alt = isnan(gps_data.fix.altMSL) ? 0.0 : gps_data.fix.altMSL;
+    gloc.alt = isfinite(gps_data.fix.altMSL) ? gps_data.fix.altMSL : 0.0;
     gloc.ftime = gps_data.fix.time;
-    if (!isnan(gps_data.fix.eph)) {
+    if (isfinite(gps_data.fix.eph)) {
       gloc.acc = gps_data.fix.eph;
     } else {
       gloc.acc = 0.0;
     }
   #else
-    gloc.alt = isnan(gps_data.fix.altitude) ? 0.0 : gps_data.fix.altitude;
+    gloc.alt = isfinite(gps_data.fix.altitude) ? gps_data.fix.altitude : 0.0;
     gloc.ftime.tv_sec = (time_t)gps_data.fix.time;
-    if (!isnan(gps_data.fix.epx) && !isnan(gps_data.fix.epy)) {
+    if (isfinite(gps_data.fix.epx) && isfinite(gps_data.fix.epy)) {
       gloc.acc = (gps_data.fix.epx + gps_data.fix.epy)/2;
     } else {
       gloc.acc = 0.0;
     }
   #endif
-  // we use the system clock to avoid problem if
-  // the system clock and the gps time are not in sync
+  // we use the system monotonic clock to avoid problem if
+  // the clock and the gps time are not in sync
   // gloc.ctime is only used for relative timing
   clock_gettime(CLOCK_MONOTONIC, &gloc.ctime);
 
@@ -128,7 +128,7 @@ void *retrieve_gps_data(void *arg)
       // test everything is right
       if ((ret > 0) && gps_data.set && (status == STATUS_FIX)
           && ((gps_data.fix.mode == MODE_2D) || (gps_data.fix.mode == MODE_3D ))
-          && !isnan(gps_data.fix.latitude) && !isnan(gps_data.fix.longitude)) {
+          && isfinite(gps_data.fix.latitude) && isfinite(gps_data.fix.longitude)) {
         pthread_mutex_lock(&mutex_gloc);
         if (!has_gps_got_fix) {
           has_gps_got_fix = true;
