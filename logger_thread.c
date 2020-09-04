@@ -86,11 +86,11 @@ void *process_queue(void *args)
       // use system time because we can't use gps fix time
       clock_gettime(CLOCK_REALTIME, &tmp_gloc.ftime);
     } else if (option_gps == GPS_LOG_ALL) {
-      if (!tmp_gloc.lat || !tmp_gloc.lon) {
+      if (!tmp_gloc.updated) {
         tmp_gloc.lat = tmp_gloc.lon = tmp_gloc.alt = tmp_gloc.acc = 0.0;
       }
     }
-    if (((option_gps == GPS_LOG_ONZ) && tmp_gloc.lat && tmp_gloc.lon)
+    if (((option_gps == GPS_LOG_ONZ) && tmp_gloc.updated)
       || (option_gps == GPS_LOG_ALL) || (option_gps == GPS_LOG_ZERO)) {
       if (!format_csv) {
         insert_beacon(*ap, tmp_gloc, db, authmode_pk_cache, ap_pk_cache);

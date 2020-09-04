@@ -23,7 +23,7 @@ extern pthread_mutex_t mutex_gtr;
 extern pthread_mutex_t mutex_gloc;
 extern pthread_cond_t cv_gtr;
 // global variable to hold the gps data retrieved by the GPS device
-struct gps_loc gloc;
+struct gps_loc gloc = { .updated = false, .lat = 0.0, .lon = 0.0, .alt = 0.0, .acc = 0.0 };
 
 bool has_gps_got_fix = false;
 unsigned int blink_led_pause = LONG_PAUSE;
@@ -41,6 +41,7 @@ void cleanup_gps_data(void *arg)
 
 static inline int update_gloc(struct gps_data_t gps_data)
 {
+  gloc.updated = true;
   // update global gloc gps location
   gloc.lat = gps_data.fix.latitude;
   gloc.lon = gps_data.fix.longitude;
@@ -112,6 +113,7 @@ void *retrieve_gps_data(void *arg)
   int status, ret;
 
   while (true) {
+    gloc.updated = false;
     gloc.lat = gloc.lon = gloc.alt = gloc.acc = 0.0;
     // wait at most for 1 second to receive data
     if (gps_waiting(&gps_data, 1000000)) {
