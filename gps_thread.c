@@ -23,7 +23,11 @@ extern pthread_mutex_t mutex_gtr;
 extern pthread_mutex_t mutex_gloc;
 extern pthread_cond_t cv_gtr;
 // global variable to hold the gps data retrieved by the GPS device
-struct gps_loc gloc = { .updated = false, .lat = 0.0, .lon = 0.0, .alt = 0.0, .acc = 0.0 };
+struct gps_loc gloc = {
+  .updated = false, .lat = 0.0, .lon = 0.0, .alt = 0.0, .acc = 0.0,
+  .ftime = { .tv_sec=0, .tv_nsec=0 },
+  .ctime = { .tv_sec=0, .tv_nsec=0 }
+};
 
 bool has_gps_got_fix = false;
 unsigned int blink_led_pause = LONG_PAUSE;
@@ -113,8 +117,6 @@ void *retrieve_gps_data(void *arg)
   int status, ret;
 
   while (true) {
-    gloc.updated = false;
-    gloc.lat = gloc.lon = gloc.alt = gloc.acc = 0.0;
     // wait at most for 1 second to receive data
     if (gps_waiting(&gps_data, 1000000)) {
       #if GPSD_API_MAJOR_VERSION >= 10
@@ -127,6 +129,7 @@ void *retrieve_gps_data(void *arg)
         status = gps_data.status;
         ret = gps_read(&gps_data);
       #endif
+      gloc.updated = false;
       // test everything is right
       if ((ret > 0) && gps_data.set && (status == STATUS_FIX)
           && ((gps_data.fix.mode == MODE_2D) || (gps_data.fix.mode == MODE_3D ))

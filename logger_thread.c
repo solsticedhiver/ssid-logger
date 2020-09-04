@@ -23,9 +23,7 @@ Copyright © 2020 solsTiCe d'Hiver
 #include "db.h"
 #include "ap_info.h"
 #include "lruc.h"
-
-#define AUTHMODE_CACHE_SIZE 32
-#define AP_CACHE_SIZE 64
+#include "config.h"
 
 extern pthread_mutex_t mutex_queue;
 extern pthread_mutex_t mutex_gloc;
@@ -68,7 +66,8 @@ void *process_queue(void *args)
   // push cleanup code when exiting thread
   pthread_cleanup_push(cleanup_caches, NULL);
 
-  clock_gettime(CLOCK_MONOTONIC, &start_ts_cache);
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  start_ts_cache = now;
 
   while (true) {
     sem_wait(&queue_empty);
@@ -81,17 +80,31 @@ void *process_queue(void *args)
     pthread_mutex_lock(&mutex_gloc);
     tmp_gloc = gloc;
     pthread_mutex_unlock(&mutex_gloc);
+
+    bool log = false;
     if (option_gps == GPS_LOG_ZERO) {
       tmp_gloc.lat = tmp_gloc.lon = tmp_gloc.alt = tmp_gloc.acc = 0.0;
       // use system time because we can't use gps fix time
-      clock_gettime(CLOCK_REALTIME, &tmp_gloc.ftime);
-    } else if (option_gps == GPS_LOG_ALL) {
+      clock_gettime(CLOCK_REALTIME, &now);
+      tmp_gloc.ftime = now;
+      log = true;
+    } else {
       if (!tmp_gloc.updated) {
-        tmp_gloc.lat = tmp_gloc.lon = tmp_gloc.alt = tmp_gloc.acc = 0.0;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        // if gps data is older than MAX_GPS_DATA_AGE seconds (default is 2), don't use them
+        if (now.tv_sec - tmp_gloc.ctime.tv_sec > MAX_GPS_DATA_AGE) {
+          if (option_gps == GPS_LOG_ONZ) {
+            log = false;
+          } else {
+            tmp_gloc.lat = tmp_gloc.lon = tmp_gloc.alt = tmp_gloc.acc = 0.0;
+            log = true;
+          }
+        }
+      } else {
+        log = true;
       }
     }
-    if (((option_gps == GPS_LOG_ONZ) && tmp_gloc.updated)
-      || (option_gps == GPS_LOG_ALL) || (option_gps == GPS_LOG_ZERO)) {
+    if (log) {
       if (!format_csv) {
         insert_beacon(*ap, tmp_gloc, db, authmode_pk_cache, ap_pk_cache);
       } else {

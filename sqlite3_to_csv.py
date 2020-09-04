@@ -9,7 +9,7 @@ import os.path
 import sys
 import shlex
 
-VERSION = '0.2.2'
+VERSION = '0.2.3'
 CSV_PRE_HEADER = 'WigleWifi-1.4,appRelease={},model={},release={},device=ssid-logger,display=ssid-logger,board=ssid-logger,brand=ssid-logger'
 CSV_HEADER = ['MAC', 'SSID', 'AuthMode', 'FirstSeen', 'Channel', 'RSSI',
     'CurrentLatitude', 'CurrentLongitude', 'AltitudeMeters', 'AccuracyMeters', 'Type']

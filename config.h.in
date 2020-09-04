@@ -13,6 +13,10 @@
 
 #define GPSD_HOST "localhost"
 #define GPSD_PORT "2947"
+#define MAX_GPS_DATA_AGE 2
+
+#define AUTHMODE_CACHE_SIZE 32
+#define AP_CACHE_SIZE 64
 
 #define BRIGHTNESS "/sys/class/leds/led0/brightness"
 #define FLASH_DURATION 500000 // in microseconds
