@@ -129,19 +129,19 @@ void *retrieve_gps_data(void *arg)
         status = gps_data.status;
         ret = gps_read(&gps_data);
       #endif
+      pthread_mutex_lock(&mutex_gloc);
       gloc.updated = false;
       // test everything is right
       if ((ret > 0) && gps_data.set && (status == STATUS_FIX)
           && ((gps_data.fix.mode == MODE_2D) || (gps_data.fix.mode == MODE_3D ))
           && isfinite(gps_data.fix.latitude) && isfinite(gps_data.fix.longitude)) {
-        pthread_mutex_lock(&mutex_gloc);
         if (!has_gps_got_fix) {
           has_gps_got_fix = true;
           blink_led_pause = SHORT_PAUSE;
         }
         update_gloc(gps_data);
-        pthread_mutex_unlock(&mutex_gloc);
       }
+      pthread_mutex_unlock(&mutex_gloc);
     }
     usleep(500000);
     pthread_testcancel();
