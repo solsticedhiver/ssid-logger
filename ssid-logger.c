@@ -353,6 +353,10 @@ int main(int argc, char *argv[])
     parse_os_release(&os_name, &os_version);
 
     file_ptr = fopen(file_name, "a");
+    if (file_ptr == NULL) {
+      fprintf(stderr, "Error: Can't write to %s\n", file_name);
+      goto file_init_failure;
+    }
     fprintf(file_ptr, "WigleWifi-1.4,appRelease=%s,model=%s,release=%s,"
       "device=ssid-logger,display=ssid-logger,board=ssid-logger,brand=ssid-logger\n",
       VERSION, os_name ? os_name : "linux", os_version ? os_version : "unknown");
@@ -371,21 +375,13 @@ int main(int argc, char *argv[])
         // abort because the file does exist but is not writable. sqlite3 will not write to it
         fprintf(stderr, "Error: %s is not writable\n", file_name);
         db = NULL;
-        #ifdef BLINK_LED
-        goto blink_failure;
-        #else
-        goto gps_init_failure;
-        #endif
+        goto file_init_failure;
       }
     }
     #endif
     if (init_beacon_db(file_name, &db) != SQLITE_OK) {
       db = NULL;
-      #ifdef BLINK_LED
-      goto blink_failure;
-      #else
-      goto gps_init_failure;
-      #endif
+      goto file_init_failure;
     }
     begin_txn(db);
   }
@@ -404,24 +400,6 @@ int main(int argc, char *argv[])
     }
   }
 
-#ifdef BLINK_LED
-blink_failure:
-  pthread_cancel(blink);
-#endif
-
-gps_init_failure:
-  pthread_mutex_destroy(&mutex_gtr);
-  pthread_cond_destroy(&cv_gtr);
-
-gps_failure:
-  pthread_cancel(gps);
-
-logger_failure:
-  pthread_cancel(logger);
-
-  sem_destroy(&queue_full);
-  sem_destroy(&queue_empty);
-
   if (format_csv) {
     fclose(file_ptr);
   } else {
@@ -431,6 +409,24 @@ logger_failure:
     }
   }
 
+file_init_failure:
+#ifdef BLINK_LED
+  pthread_cancel(blink);
+blink_failure:
+#endif
+  pthread_cancel(gps);
+
+gps_init_failure:
+  pthread_mutex_destroy(&mutex_gtr);
+  pthread_cond_destroy(&cv_gtr);
+
+gps_failure:
+  pthread_cancel(logger);
+
+logger_failure:
+  sem_destroy(&queue_full);
+  sem_destroy(&queue_empty);
+
   // free up elements of the queue
   int qs = queue->size;
   struct ap_info *ap;
@@ -439,9 +435,9 @@ logger_failure:
     free_ap_info(ap);
   }
   free(queue);
+  pthread_cancel(hopper);
 
 hopper_failure:
-  pthread_cancel(hopper);
   pthread_mutex_destroy(&mutex_queue);
   pthread_mutex_destroy(&mutex_gloc);
 
