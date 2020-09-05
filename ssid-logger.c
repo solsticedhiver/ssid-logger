@@ -77,7 +77,7 @@ void sigint_handler(int s)
   pcap_breakloop(handle);
 }
 
-// produces ap_info that are stored in the queue
+// produces ap_info and store them in the queue
 void process_packet(uint8_t * args, const struct pcap_pkthdr *header, const uint8_t *packet)
 {
   uint16_t freq;
@@ -258,7 +258,6 @@ void initialize_pcap(pcap_t **handle, const char *iface)
   if (pcap_compile(*handle, &bfp, filter_exp, 1, PCAP_NETMASK_UNKNOWN) == -1) {
     fprintf(stderr, "Error: couldn't parse filter %s: %s\n",
             filter_exp, pcap_geterr(*handle));
-    ret = EXIT_FAILURE;
     goto handle_failure;
   }
   if (pcap_setfilter(*handle, &bfp) == -1) {
@@ -296,8 +295,8 @@ int main(int argc, char *argv[])
   }
   pthread_detach(hopper);
 
-  // the queue holds the ap_info produced by process_packet
-  // the semaphores manage the synchronisation with process_queue (in logger_thread)
+  // the queue holds the ap_infos produced by process_packet()
+  // the semaphores manage the synchronisation with process_queue() (in logger_thread)
   queue = new_queue(MAX_QUEUE_SIZE);
   sem_init(&queue_empty, 0, 0);
   sem_init(&queue_full, 0, MAX_QUEUE_SIZE);

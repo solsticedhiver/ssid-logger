@@ -90,13 +90,14 @@ int init_beacon_db(const char *db_file, sqlite3 **db)
   return 0;
 }
 
+// retrieve primary key id for authmode
 int64_t search_authmode(const char *authmode, sqlite3 *db)
 {
   char *sql;
   sqlite3_stmt *stmt;
   int64_t authmode_id = 0, ret;
 
-  // look for an existing ap_info in the db
+  // look for an existing authmode in the db
   sql = "select id from authmode where mode=?;";
   if ((ret = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
@@ -123,9 +124,9 @@ int64_t search_authmode(const char *authmode, sqlite3 *db)
   return authmode_id;
 }
 
+// search authmode in the db or insert it if not present and return the primary key
 int64_t insert_authmode(const char *authmode, sqlite3 *db)
 {
-    // insert the authmode into the db
   int64_t ret, authmode_id = 0;
   char sql[65 + MAX_AUTHMODE_LEN];
 
@@ -142,13 +143,13 @@ int64_t insert_authmode(const char *authmode, sqlite3 *db)
   return authmode_id;
 }
 
+// look for an existing ap_info in the db, using the ssid and the bssid
 int64_t search_ap(struct ap_info ap, sqlite3 *db)
 {
   char *sql;
   sqlite3_stmt *stmt;
   int64_t ap_id = 0, ret;
 
-  // look for an existing ap_info in the db
   sql = "select id from ap where bssid=? and ssid=?;";
   if ((ret = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
@@ -179,9 +180,9 @@ int64_t search_ap(struct ap_info ap, sqlite3 *db)
   return ap_id;
 }
 
+// search ap_info in the db or insert it if not found
 int64_t insert_ap(struct ap_info ap, sqlite3 *db)
 {
-    // insert the ap_info into the db
   int64_t ret, ap_id = 0;
   char sql[128];
 
@@ -199,6 +200,7 @@ int64_t insert_ap(struct ap_info ap, sqlite3 *db)
   return ap_id;
 }
 
+// insert an ap_info into the db
 int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *authmode_pk_cache, lruc *ap_pk_cache)
 {
   int ret;
@@ -257,6 +259,7 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *aut
   return 0;
 }
 
+// start a new sqlite3 transaction
 int begin_txn(sqlite3 *db)
 {
   int ret;
@@ -271,6 +274,7 @@ int begin_txn(sqlite3 *db)
   return 0;
 }
 
+// commit current transaction
 int commit_txn(sqlite3 *db)
 {
   int ret;

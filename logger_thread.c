@@ -82,6 +82,7 @@ void *process_queue(void *args)
     pthread_mutex_unlock(&mutex_gloc);
 
     bool log = false;
+    // process gps data in gloc
     if (option_gps == GPS_LOG_ZERO) {
       tmp_gloc.lat = tmp_gloc.lon = tmp_gloc.alt = tmp_gloc.acc = 0.0;
       // use system time because we can't use gps fix time
@@ -120,7 +121,7 @@ void *process_queue(void *args)
     if (now.tv_sec - start_ts_cache.tv_sec >= DB_CACHE_TIME) {
       if (format_csv) {
         fflush(file_ptr);
-        fsync(fileno(file_ptr));
+        fsync(fileno(file_ptr)); // over-kill ?
       } else {
         // commit to db
         commit_txn(db);

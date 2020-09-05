@@ -43,6 +43,7 @@ void cleanup_gps_data(void *arg)
   return;
 }
 
+// gathers gps data from libgps gps_data and store it in our middle man variable gloc
 static inline int update_gloc(struct gps_data_t gps_data)
 {
   gloc.updated = true;
@@ -136,6 +137,7 @@ void *retrieve_gps_data(void *arg)
           && ((gps_data.fix.mode == MODE_2D) || (gps_data.fix.mode == MODE_3D ))
           && isfinite(gps_data.fix.latitude) && isfinite(gps_data.fix.longitude)) {
         if (!has_gps_got_fix) {
+          // update variable to change blink frequency if gps fix
           has_gps_got_fix = true;
           blink_led_pause = SHORT_PAUSE;
         }

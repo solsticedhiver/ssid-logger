@@ -18,6 +18,7 @@ gps_dep = dependency('libgps')
 sqlite3_dep = dependency('sqlite3')
 cmocka_dep = dependency('cmocka', required: false)
 
+# define blink_rpi0_led to enable the feature that will blink the rpi0 ACT led to inform you on gps fix
 if get_option('blink_rpi0_led')
   add_project_arguments('-DBLINK_LED=1', language:'c')
   src += ['blink_thread.c']

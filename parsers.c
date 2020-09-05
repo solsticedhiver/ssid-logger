@@ -124,10 +124,10 @@ struct cipher_suite *parse_cipher_suite(uint8_t *start)
   return cs;
 }
 
+// parse radiotap header to get frequency and rssi
+// returns radiotap header size or -1 on error
 int8_t parse_radiotap_header(const uint8_t *packet, uint16_t *freq, int8_t *rssi)
 {
-  // parse radiotap header to get frequency and rssi
-  // returns radiotap header size or -1 on error
   struct ieee80211_radiotap_header *rtaphdr;
   rtaphdr = (struct ieee80211_radiotap_header *) (packet);
   int8_t offset = (int8_t) rtaphdr->it_len;
@@ -184,11 +184,11 @@ int8_t parse_radiotap_header(const uint8_t *packet, uint16_t *freq, int8_t *rssi
   return offset;
 }
 
+// parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
 struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, int8_t offset)
 {
   struct ap_info *ap = malloc(sizeof(struct ap_info));
 
-  // parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
   // BSSID
   const uint8_t *bssid_addr = packet + offset + 2 + 2 + 6 + 6;   // FC + duration + DA + SA
   sprintf(ap->bssid, "%02x:%02x:%02x:%02x:%02x:%02x", bssid_addr[0],
@@ -247,13 +247,14 @@ struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, i
   return ap;
 }
 
+// construct a string from crypto cipher suites and variables
 char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
                             bool ess, bool privacy, bool wps)
 {
   char authmode[MAX_AUTHMODE_LEN];
   authmode[0] = '\0';           // this is needed for strcat to work
   uint8_t last_byte;
-  long int length = MAX_AUTHMODE_LEN - 1;
+  long int length = MAX_AUTHMODE_LEN - 1; // used to avoid overflowing authmode
   bool eap_ft = false, psk_ft = false, add_pc = false;
 
   if (msw != NULL) {
@@ -413,6 +414,7 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
   return strndup(authmode, MAX_AUTHMODE_LEN-length);
 }
 
+// turn ap_info into a string (used if format is csv)
 char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
 {
   char tail[64], firstseen[21];
@@ -437,6 +439,7 @@ char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
 //A4:3E:51:XX:XX:XX,Livebox-XXXX,[WPA-PSK-CCMP+TKIP] [WPA2-PSK-CCMP+TKIP][ESS],2020-02-15 17:52:51,6,-78,50.0000000000,-3.0000000000,19.308001,0,WIFI
 }
 
+// attempt to get ID and VERSION_ID in any os-release file (see man 5 os-release)
 int parse_os_release(char **os_name, char **os_version)
 {
   char buf[BUFSIZ], *p;
@@ -496,6 +499,7 @@ int parse_os_release(char **os_name, char **os_version)
   return 0;
 }
 
+// turn a cipher_suite object into a printable string (used for debug)
 void print_cipher_suite(struct cipher_suite *cs)
 {
   if (cs == NULL) {
