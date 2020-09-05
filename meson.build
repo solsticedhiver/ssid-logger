@@ -3,7 +3,7 @@ project('ssid-logger', 'c', version: '0.2.3')
 cc = meson.get_compiler('c')
 
 conf_data = configuration_data()
-conf_data.set('version', '0.2.2')
+conf_data.set('version', meson.project_version())
 configure_file(input : 'config.h.in',
                output : 'config.h',
                configuration : conf_data)
