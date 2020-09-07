@@ -11,7 +11,7 @@
 extern unsigned int blink_led_pause;
 
 // echo a value in a file
-int static inline echo_value(const char *path, int value)
+int echo_value(const char *path, int value)
 {
   FILE *fp = fopen(path, "w");
   if (fp == NULL) {
@@ -23,12 +23,12 @@ int static inline echo_value(const char *path, int value)
   return 0;
 }
 
-int static inline turn_led_on(void)
+int turn_led_on(void)
 {
   // echo 1 >/sys/class/leds/led0/brightness
   return echo_value(BRIGHTNESS, 1);
 }
-int static inline turn_led_off(void)
+int turn_led_off(void)
 {
 // echo 0 >/sys/class/leds/led0/brightness
   return echo_value(BRIGHTNESS, 0);
