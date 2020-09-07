@@ -444,5 +444,11 @@ hopper_failure:
 
   free(file_name);
 
+#ifdef BLINK_LED
+  if (ret == EXIT_FAILURE) {
+    // signal that something has gone wrong
+    turn_led_on();
+  }
+#endif
   return ret;
 }
