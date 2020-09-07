@@ -153,7 +153,7 @@ void parse_args(int argc, char *argv[], bool *format_csv, char **file_name, char
     }
   }
 
-  if (iface == NULL) {
+  if (*iface == NULL) {
     fprintf(stderr, "Error: no interface selected\n");
     exit(EXIT_FAILURE);
   }
