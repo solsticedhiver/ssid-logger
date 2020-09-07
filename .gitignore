@@ -3,3 +3,4 @@ build/
 beacon.db
 *.nmea
 *.csv
+.vscode
