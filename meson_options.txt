@@ -1,1 +1,7 @@
+# pass -Dblink_rpi0_led=true to meson to enable this feature:
+# this will blink the rpi0 ACT led to inform you on gps fix
+# for this to be visible and effective, one needs to use in /boot/config.txt
+# the following parameters
+# dtparam=act_led_trigger=none
+# dtparam=act_led_activelow=on
 option('blink_rpi0_led', type: 'boolean', value: false, description: 'blink the led on rpi0')
