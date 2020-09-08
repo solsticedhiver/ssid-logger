@@ -25,7 +25,7 @@ if [ $# -ge 1 ] ;then
 		if [[ "${f##*.}" == "db" ]] ;then
 			wf=${f%%.db}.csv
 			echo ":: Converting $f to $wf"
-			../ssid-logger/sqlite3_to_csv.py -i $f -o "$wf"
+			../sqlite3_to_csv.py -i $f -o "$wf"
 		else
 			wf=$f
 		fi
