@@ -263,9 +263,8 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *aut
 int begin_txn(sqlite3 *db)
 {
   int ret;
-  char sql[32];
+  char *sql = "begin transaction;";
 
-  snprintf(sql, 32, "begin transaction;");
   if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
     return ret * -1;
@@ -278,9 +277,8 @@ int begin_txn(sqlite3 *db)
 int commit_txn(sqlite3 *db)
 {
   int ret;
-  char sql[32];
+  char *sql = "commit transaction;";
 
-  snprintf(sql, 32, "commit transaction;");
   if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
     return ret * -1;
