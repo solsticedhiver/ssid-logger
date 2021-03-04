@@ -115,26 +115,20 @@ void *retrieve_gps_data(void *arg)
   // push clean up code when thread is cancelled
   pthread_cleanup_push(cleanup_gps_data, (void *) (&gdt));
 
-  int status, ret;
+  int ret;
 
   while (true) {
     // wait at most for 1 second to receive data
     if (gps_waiting(&gdt, 1000000)) {
-      #if GPSD_API_MAJOR_VERSION >= 10
+      #if GPSD_API_MAJOR_VERSION >= 7
         ret = gps_read(&gdt, NULL, 0);
-        status = gdt.fix.status;
-      #elif GPSD_API_MAJOR_VERSION >= 7
-        ret = gps_read(&gdt, NULL, 0);
-        status = gdt.status;
       #else
         ret = gps_read(&gdt);
-        status = gdt.status;
       #endif
       pthread_mutex_lock(&mutex_gloc);
       gloc.updated = false;
       // test everything is right
-      if ((ret > 0) && gdt.set && (status == STATUS_FIX)
-          && ((gdt.fix.mode == MODE_2D) || (gdt.fix.mode == MODE_3D ))
+      if ((ret > 0) && gdt.set && ((gdt.fix.mode == MODE_2D) || (gdt.fix.mode == MODE_3D ))
           && isfinite(gdt.fix.latitude) && isfinite(gdt.fix.longitude)) {
         if (!has_gps_got_fix) {
           // update variable to change blink frequency if gps fix
