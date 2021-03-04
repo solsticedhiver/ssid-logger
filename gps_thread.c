@@ -14,6 +14,7 @@ Copyright © 2020 solsTiCe d'Hiver
 #ifdef HAS_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
+#include <math.h>
 
 #include "config.h"
 #include "gps_thread.h"
@@ -62,7 +63,7 @@ static inline int update_gloc(struct gps_data_t gdt)
     gloc.alt = isfinite(gdt.fix.altitude) ? gdt.fix.altitude : 0.0;
     gloc.ftime.tv_sec = (time_t)gdt.fix.time;
     if (isfinite(gdt.fix.epx) && isfinite(gdt.fix.epy)) {
-      gloc.acc = (gdt.fix.epx + gdt.fix.epy)/2;
+      gloc.acc = sqrt(2*pow(gdt.fix.epx, 2) + 2*pow(gdt.fix.epy, 2));
     } else {
       gloc.acc = 0.0;
     }
