@@ -34,35 +34,35 @@ unsigned int blink_led_pause = LONG_PAUSE;
 
 void cleanup_gps_data(void *arg)
 {
-  struct gps_data_t *gps_data;
-  gps_data = (struct gps_data_t *) arg;
+  struct gps_data_t *gdt;
+  gdt = (struct gps_data_t *) arg;
 
-  gps_stream(gps_data, WATCH_DISABLE, NULL);
-  gps_close(gps_data);
+  gps_stream(gdt, WATCH_DISABLE, NULL);
+  gps_close(gdt);
 
   return;
 }
 
-// gathers gps data from libgps gps_data and store it in our middle man variable gloc
-static inline int update_gloc(struct gps_data_t gps_data)
+// gathers gps data from libgps gdt and store it in our middle man variable gloc
+static inline int update_gloc(struct gps_data_t gdt)
 {
   gloc.updated = true;
   // update global gloc gps location
-  gloc.lat = gps_data.fix.latitude;
-  gloc.lon = gps_data.fix.longitude;
+  gloc.lat = gdt.fix.latitude;
+  gloc.lon = gdt.fix.longitude;
   #if GPSD_API_MAJOR_VERSION >= 9
-    gloc.alt = isfinite(gps_data.fix.altMSL) ? gps_data.fix.altMSL : 0.0;
-    gloc.ftime = gps_data.fix.time;
-    if (isfinite(gps_data.fix.eph)) {
-      gloc.acc = gps_data.fix.eph;
+    gloc.alt = isfinite(gdt.fix.altMSL) ? gdt.fix.altMSL : 0.0;
+    gloc.ftime = gdt.fix.time;
+    if (isfinite(gdt.fix.eph)) {
+      gloc.acc = gdt.fix.eph;
     } else {
       gloc.acc = 0.0;
     }
   #else
-    gloc.alt = isfinite(gps_data.fix.altitude) ? gps_data.fix.altitude : 0.0;
-    gloc.ftime.tv_sec = (time_t)gps_data.fix.time;
-    if (isfinite(gps_data.fix.epx) && isfinite(gps_data.fix.epy)) {
-      gloc.acc = (gps_data.fix.epx + gps_data.fix.epy)/2;
+    gloc.alt = isfinite(gdt.fix.altitude) ? gdt.fix.altitude : 0.0;
+    gloc.ftime.tv_sec = (time_t)gdt.fix.time;
+    if (isfinite(gdt.fix.epx) && isfinite(gdt.fix.epy)) {
+      gloc.acc = (gdt.fix.epx + gdt.fix.epy)/2;
     } else {
       gloc.acc = 0.0;
     }
@@ -78,7 +78,7 @@ static inline int update_gloc(struct gps_data_t gps_data)
 // helper thread that repeatedly retrieve gps coord. from the gpsd daemon
 void *retrieve_gps_data(void *arg)
 {
-  struct gps_data_t gps_data;
+  struct gps_data_t gdt;
   option_gps_t *option_gps;
 
   #ifdef HAS_SYS_PRCTL_H
@@ -96,7 +96,7 @@ void *retrieve_gps_data(void *arg)
     return NULL;
   }
 
-  if (gps_open(GPSD_HOST, GPSD_PORT, &gps_data) == -1) {
+  if (gps_open(GPSD_HOST, GPSD_PORT, &gdt) == -1) {
     // error connecting to gpsd
     fprintf(stderr, "Error(gpsd): %s\n", gps_errstr(errno));
     pthread_mutex_lock(&mutex_gtr);
@@ -105,7 +105,7 @@ void *retrieve_gps_data(void *arg)
     pthread_mutex_unlock(&mutex_gtr);
     return NULL;
   }
-  gps_stream(&gps_data, WATCH_ENABLE | WATCH_JSON, NULL);
+  gps_stream(&gdt, WATCH_ENABLE | WATCH_JSON, NULL);
 
   pthread_mutex_lock(&mutex_gtr);
   gps_thread_init_result = 0;
@@ -113,35 +113,35 @@ void *retrieve_gps_data(void *arg)
   pthread_mutex_unlock(&mutex_gtr);
 
   // push clean up code when thread is cancelled
-  pthread_cleanup_push(cleanup_gps_data, (void *) (&gps_data));
+  pthread_cleanup_push(cleanup_gps_data, (void *) (&gdt));
 
   int status, ret;
 
   while (true) {
     // wait at most for 1 second to receive data
-    if (gps_waiting(&gps_data, 1000000)) {
+    if (gps_waiting(&gdt, 1000000)) {
       #if GPSD_API_MAJOR_VERSION >= 10
-        status = gps_data.fix.status;
-        ret = gps_read(&gps_data, NULL, 0);
+        ret = gps_read(&gdt, NULL, 0);
+        status = gdt.fix.status;
       #elif GPSD_API_MAJOR_VERSION >= 7
-        status = gps_data.status;
-        ret = gps_read(&gps_data, NULL, 0);
+        ret = gps_read(&gdt, NULL, 0);
+        status = gdt.status;
       #else
-        status = gps_data.status;
-        ret = gps_read(&gps_data);
+        ret = gps_read(&gdt);
+        status = gdt.status;
       #endif
       pthread_mutex_lock(&mutex_gloc);
       gloc.updated = false;
       // test everything is right
-      if ((ret > 0) && gps_data.set && (status == STATUS_FIX)
-          && ((gps_data.fix.mode == MODE_2D) || (gps_data.fix.mode == MODE_3D ))
-          && isfinite(gps_data.fix.latitude) && isfinite(gps_data.fix.longitude)) {
+      if ((ret > 0) && gdt.set && (status == STATUS_FIX)
+          && ((gdt.fix.mode == MODE_2D) || (gdt.fix.mode == MODE_3D ))
+          && isfinite(gdt.fix.latitude) && isfinite(gdt.fix.longitude)) {
         if (!has_gps_got_fix) {
           // update variable to change blink frequency if gps fix
           has_gps_got_fix = true;
           blink_led_pause = SHORT_PAUSE;
         }
-        update_gloc(gps_data);
+        update_gloc(gdt);
       }
       pthread_mutex_unlock(&mutex_gloc);
     }
