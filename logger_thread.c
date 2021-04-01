@@ -106,6 +106,10 @@ void *process_queue(void *args)
       }
     }
     if (log) {
+      if (option_gps == GPS_LOG_ONZ && tmp_gloc.lat == 0.0 && tmp_gloc.lon == 0.0) {
+        // that's useless and against what is intended: GPS_LOG_ONZ means only log non zero
+        goto nolog;
+      }
       if (!format_csv) {
         insert_beacon(*ap, tmp_gloc, db, authmode_pk_cache, ap_pk_cache);
       } else {
@@ -114,6 +118,7 @@ void *process_queue(void *args)
         free(tmp);
       }
     }
+nolog:
     free_ap_info(ap);
 
     // commit our data if time elapsed is greater than DB_CACHE_TIME
