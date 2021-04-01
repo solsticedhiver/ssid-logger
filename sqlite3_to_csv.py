@@ -37,6 +37,15 @@ def _parse_os_release_content():
                 pass
     return props
 
+def process_text(data):
+    try:
+        ret = data.decode('utf-8')
+        return ret
+    except UnicodeDecodeError:
+        return None
+# use our converter for text to skip ssid with unparsable utf-8
+sqlite3.register_converter('text', process_text)
+
 def main():
     parser = argparse.ArgumentParser(description='Convert sqlite3 beacon.db to a csv file')
     parser.add_argument('-a', '--after', help='filter beacon with timestamp more recent than AFTER (YYYY-mm-dd[THH:MM])')
@@ -77,7 +86,7 @@ def main():
                 sys.exit(-1)
 
     try:
-        conn = sqlite3.connect(f'file:{args.input}?mode=ro', uri=True)
+        conn = sqlite3.connect(f'file:{args.input}?mode=ro', uri=True, detect_types=sqlite3.PARSE_DECLTYPES)
         c = conn.cursor()
         sql = 'pragma query_only = on;'
         c.execute(sql)
@@ -103,6 +112,8 @@ def main():
         row = c.fetchone()  # TODO: try/catch this one too
         while row is not None:
             tmp = list(row)
+            if tmp[1] is None:
+                continue
             if args.after and tmp[3] < start_time:
                 continue
             if args.before and tmp[3] > end_time:
