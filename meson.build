@@ -30,6 +30,10 @@ if cc.has_header('sys/stat.h')
   add_project_arguments('-DHAS_SYS_STAT_H', language: 'c')
 endif
 
+if pcap_dep.version() == '1.10.0'
+  warning('There is a bug with libpcap 1.10.0. Please either use a 1.9.1 version and older or a 1.10.1 and above (see https://github.com/solsticedhiver/ssid-logger/issues/2)')
+endif
+
 executable('ssid-logger', src,
   dependencies: [pcap_dep, pthread_dep, nl_dep, genl_dep, gps_dep, sqlite3_dep],
   install: true)
