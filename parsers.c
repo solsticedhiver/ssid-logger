@@ -353,6 +353,11 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
         add_pc = true;
         length -= 11;
         break;
+      case 8:
+        strncat(authmode, "SAE-", length);
+        add_pc = true;
+        length -= 4;
+        break;
       }
       if (add_pc) {
         add_pc = false;
@@ -417,12 +422,12 @@ char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
     strncat(authmode, "[WEP]", length);
     length -= 5;
   }
-  if (ess) {
-    strncat(authmode, "[ESS]", length);
-    length -= 5;
-  }
   if (wps) {
     strncat(authmode, "[WPS]", length);
+    length -= 5;
+  }
+  if (ess) {
+    strncat(authmode, "[ESS]", length);
     length -= 5;
   }
 

@@ -107,6 +107,14 @@ WPA2_PSK_FT_SHA256_CCMP_TKIP = [
     b'\x00\x0f\xac\x06',
     b'\x00\x0f\xac\x08',
     b'\x00\x00']
+WPA2_SAE_SHA256_CCMP = [
+    b'\x01\x00',
+    b'\x00\x0f\xac\x04',
+    b'\x01\x00',
+    b'\x00\x0f\xac\x04',
+    b'\x01\x00',
+    b'\x00\x0f\xac\x08',
+    b'\x00\x00']
 WPA2_EAP_PSK_CCMP_TKIP = [
     b'\x01\x00',
     b'\x00\x0f\xac\x04',
@@ -117,7 +125,7 @@ WPA2_EAP_PSK_CCMP_TKIP = [
     b'\x00\x0f\xac\x01',
     b'\x00\x0f\xac\x02',
     b'\x00\x00']
-rsn_bytes = b''.join(WPA2_EAP_PSK_CCMP_TKIP)
+rsn_bytes = b''.join(WPA2_PSK_CCMP_TKIP)
 rsn = Dot11Elt(ID='RSNinfo', info=rsn_bytes, len=len(rsn_bytes))
 
 frame = RadioTap()/dot11/beacon/essid/rsn
