@@ -15,27 +15,42 @@ Copyright © 2020 solsTiCe d'Hiver
 #include "gps_thread.h"
 #include "ap_info.h"
 
-/*
-Cipher suite selectors
+/* Cipher suite selectors
 00-0F-AC-00 Use group cipher suite
-00-0F-AC-01 WEP-40
+00-0F-AC-01 WEP (WEP-40)
 00-0F-AC-02 TKIP
-00-0F-AC-03 reserved
-00-0F-AC-04 CCMP
+00-0F-AC-03 Reserved
+00-0F-AC-04 CCMP-128
 00-0F-AC-05 WEP-104
-00-0F-AC-06 BIP
+00-0F-AC-06 BIP-CMAC-128
+00-0F-AC-07 Group address traffic not allowed
+00-0F-AC-08 GCMP-128
+00-0F-AC-09 GCMP-256
+00-0F-AC-10 CCMP-256
+00-0F-AC-11 BIP-GMAC-128
+00-0F-AC-12 BIP-GMAC-256
+00-0F-AC-13 BIP-CMAC-256
+00-0F-AC-14-255 Reserved
+00-0F-AC-06 BIP-CMAC-128
+Other OUI: vendor specific
 
 AKM suite selectors
-00-0F-AC-00 reserved
+00-0F-AC-00 Reserved
 00-0F-AC-01 802.1X (EAP)
 00-0F-AC-02 PSK
 00-0F-AC-03 FT over 802.1x (EAP+FT)
-00-0F-AC-04 FT with PKS (PSK+FT)
-00-0F-AC-05 802.1X  or PMKSA with SHA256 (EAP-SHA256 ?)
+00-0F-AC-04 FT with PSK (PSK+FT)
+00-0F-AC-05 802.1X or PMKSA with SHA256 (EAP-SHA256 ?)
 00-0F-AC-06 PSK-SHA256
 00-0F-AC-07 TDLS
 00-0F-AC-08 SAE-SHA256
 00-0F-AC-09 FT over SAE-SHA256 (FT+SAE-SHA256 ?)
+00-0F-AC-10 AP Peer Key Authentication
+00-0F-AC-11 802.1X with suite B compliant EAP SHA-256
+00-0F-AC-12 802.1X with suite B compliant EAP SHA-384
+00-0F-AC-13 FT+802.1X with SHA-384
+00-0F-AC-14-255 Reserved
+Other OUI: Vendor Specific
 */
 
 // from https://stackoverflow.com/a/779960/283067
