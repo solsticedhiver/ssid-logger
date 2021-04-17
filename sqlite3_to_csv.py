@@ -113,6 +113,10 @@ def main():
         while row is not None:
             tmp = list(row)
             if tmp[1] is None:
+                try:
+                    row = c.fetchone()
+                except sqlite3.OperationalError as o:
+                    pass
                 continue
             if args.after and tmp[3] < start_time:
                 continue
