@@ -103,6 +103,7 @@ static void test_authmode_from_crypto(void **state)
   static const uint8_t x000FAC04[4] = {0x00, 0x0F, 0xAC, 0x04};
   //static const uint8_t x000FAC05[4] = {0x00, 0x0F, 0xAC, 0x05};
   static const uint8_t x000FAC06[4] = {0x00, 0x0F, 0xAC, 0x06};
+  static const size_t block_size = sizeof(x000FAC01);
 
   authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
   assert_string_equal(authmode, "[ESS]");
@@ -119,17 +120,17 @@ static void test_authmode_from_crypto(void **state)
   free(authmode);
 
   rsn = malloc(sizeof(struct cipher_suite));
-  memcpy(rsn->group_cipher_suite, x000FAC04, sizeof(x000FAC04));
+  memcpy(rsn->group_cipher_suite, x000FAC04, sizeof(block_size));
   rsn->pairwise_cipher_count = 2;
   rsn->pairwise_cipher_suite = malloc(sizeof(uint8_t *)* rsn->pairwise_cipher_count);
   rsn->pairwise_cipher_suite[0] = malloc(sizeof(uint8_t) * 4);
-  memcpy(rsn->pairwise_cipher_suite[0], x000FAC04, sizeof(x000FAC04));
+  memcpy(rsn->pairwise_cipher_suite[0], x000FAC04, sizeof(block_size));
   rsn->pairwise_cipher_suite[1] = malloc(sizeof(uint8_t) * 4);
-  memcpy(rsn->pairwise_cipher_suite[1], x000FAC02, sizeof(x000FAC02));
+  memcpy(rsn->pairwise_cipher_suite[1], x000FAC02, sizeof(block_size));
   rsn->akm_cipher_count = 1;
   rsn->akm_cipher_suite = malloc(sizeof(uint8_t *)* rsn->akm_cipher_count);
   rsn->akm_cipher_suite[0] = malloc(sizeof(uint8_t) * 4);
-  memcpy(rsn->akm_cipher_suite[0], x000FAC02, sizeof(x000FAC02));
+  memcpy(rsn->akm_cipher_suite[0], x000FAC02, sizeof(block_size));
   msw = NULL;
   authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
   assert_string_equal(authmode, "[WPA2-PSK-CCMP+TKIP][ESS][WPS]");
@@ -140,19 +141,19 @@ static void test_authmode_from_crypto(void **state)
   assert_string_equal(authmode, "[WPA2-PSK-CCMP][ESS][WPS]");
   free(authmode);
 
-  memcpy(rsn->pairwise_cipher_suite[0], x000FAC02, sizeof(x000FAC02));
+  memcpy(rsn->pairwise_cipher_suite[0], x000FAC02, sizeof(block_size));
   authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
   assert_string_equal(authmode, "[WPA2-PSK-TKIP][ESS][WPS]");
   free(authmode);
 
   rsn->pairwise_cipher_count = 2;
-  memcpy(rsn->pairwise_cipher_suite[1], x000FAC04, sizeof(x000FAC04));
+  memcpy(rsn->pairwise_cipher_suite[1], x000FAC04, sizeof(block_size));
   authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
   assert_string_equal(authmode, "[WPA2-PSK-TKIP+CCMP][ESS][WPS]");
   free(authmode);
 
-  memcpy(rsn->pairwise_cipher_suite[0], x000FAC04, sizeof(x000FAC04));
-  memcpy(rsn->pairwise_cipher_suite[1], x000FAC02, sizeof(x000FAC02));
+  memcpy(rsn->pairwise_cipher_suite[0], x000FAC04, sizeof(block_size));
+  memcpy(rsn->pairwise_cipher_suite[1], x000FAC02, sizeof(block_size));
   authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
   assert_string_equal(authmode, "[WPA2-PSK-CCMP+TKIP][ESS][WPS]");
   free(authmode);
@@ -160,40 +161,40 @@ static void test_authmode_from_crypto(void **state)
   rsn->akm_cipher_count = 2;
   rsn->akm_cipher_suite = realloc(rsn->akm_cipher_suite, sizeof(uint8_t *)* rsn->akm_cipher_count);
   rsn->akm_cipher_suite[1] = malloc(sizeof(uint8_t) * 4);
-  memcpy(rsn->akm_cipher_suite[1], x000FAC04, sizeof(x000FAC04));
+  memcpy(rsn->akm_cipher_suite[1], x000FAC04, sizeof(block_size));
   authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
   assert_string_equal(authmode, "[WPA2-PSK+FT/PSK-CCMP+TKIP][ESS][WPS]");
   free(authmode);
 
-  memcpy(rsn->akm_cipher_suite[0], x000FAC04, sizeof(x000FAC04));
-  memcpy(rsn->akm_cipher_suite[1], x000FAC02, sizeof(x000FAC02));
+  memcpy(rsn->akm_cipher_suite[0], x000FAC04, sizeof(block_size));
+  memcpy(rsn->akm_cipher_suite[1], x000FAC02, sizeof(block_size));
   authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
   assert_string_equal(authmode, "[WPA2-PSK+FT/PSK-CCMP+TKIP][ESS][WPS]");
   free(authmode);
 
-  memcpy(rsn->akm_cipher_suite[0], x000FAC01, sizeof(x000FAC01));
-  memcpy(rsn->akm_cipher_suite[1], x000FAC03, sizeof(x000FAC03));
+  memcpy(rsn->akm_cipher_suite[0], x000FAC01, sizeof(block_size));
+  memcpy(rsn->akm_cipher_suite[1], x000FAC03, sizeof(block_size));
   authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
   assert_string_equal(authmode, "[WPA2-EAP+FT/EAP-CCMP+TKIP][ESS][WPS]");
   free(authmode);
 
   rsn->akm_cipher_count = 1;
-  memcpy(rsn->akm_cipher_suite[0], x000FAC06, sizeof(x000FAC06));
+  memcpy(rsn->akm_cipher_suite[0], x000FAC06, sizeof(block_size));
   authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
   assert_string_equal(authmode, "[WPA2-PSK-SHA256-CCMP+TKIP][ESS][WPS]");
   free(authmode);
 
   rsn->pairwise_cipher_count = 1;
-  memcpy(rsn->pairwise_cipher_suite[0], x000FAC04, sizeof(x000FAC04));
+  memcpy(rsn->pairwise_cipher_suite[0], x000FAC04, sizeof(block_size));
   rsn->akm_cipher_count = 2;
-  memcpy(rsn->akm_cipher_suite[0], x000FAC01, sizeof(x000FAC01));
-  memcpy(rsn->akm_cipher_suite[1], x000FAC03, sizeof(x000FAC03));
+  memcpy(rsn->akm_cipher_suite[0], x000FAC01, sizeof(block_size));
+  memcpy(rsn->akm_cipher_suite[1], x000FAC03, sizeof(block_size));
   authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
   assert_string_equal(authmode, "[WPA2-EAP+FT/EAP-CCMP][ESS][WPS]");
   free(authmode);
 
-  memcpy(rsn->akm_cipher_suite[0], x000FAC02, sizeof(x000FAC02));
-  memcpy(rsn->akm_cipher_suite[1], x000FAC04, sizeof(x000FAC04));
+  memcpy(rsn->akm_cipher_suite[0], x000FAC02, sizeof(block_size));
+  memcpy(rsn->akm_cipher_suite[1], x000FAC04, sizeof(block_size));
   authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
   assert_string_equal(authmode, "[WPA2-PSK+FT/PSK-CCMP][ESS][WPS]");
   free(authmode);
@@ -209,7 +210,7 @@ static void test_authmode_from_crypto(void **state)
   rsn->pairwise_cipher_suite = realloc(rsn->pairwise_cipher_suite, sizeof(uint8_t *)* rsn->pairwise_cipher_count);
   for (int i=2; i<rsn->pairwise_cipher_count; i++) {
     rsn->pairwise_cipher_suite[i] = malloc(sizeof(uint8_t) * 4);
-    memcpy(rsn->pairwise_cipher_suite[i], x000FAC04, sizeof(x000FAC04));
+    memcpy(rsn->pairwise_cipher_suite[i], x000FAC04, sizeof(block_size));
   }
   authmode = authmode_from_crypto(rsn, msw, ess, privacy, wps);
   if (authmode != NULL) {
