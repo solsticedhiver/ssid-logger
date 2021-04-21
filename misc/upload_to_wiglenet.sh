@@ -8,16 +8,17 @@ usage() {
 }
 
 upload() {
-	if [ $APIKEY == "APIName:APIToken" ] ;then
-		echo "You need to modify the script to add your APIKEY" >&2
-		exit 1
-	fi
 	curl -s -H 'Accept:application/json' -u $APIKEY --basic -F file=@${1} -F donate=false https://api.wigle.net/api/v2/file/upload|jq '.'
 }
 
 if [ $# -eq 0 ] || [ $1 == "-h" ] || [ $1 == "--help" ] ;then
 	usage
 	exit 0
+fi
+
+if [ $APIKEY == "APIName:APIToken" ] ;then
+	echo "You need to modify the script to add your APIKEY" >&2
+	exit 1
 fi
 
 if [ $# -ge 1 ] ;then
