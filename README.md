@@ -66,3 +66,8 @@ You can view it with:
     $ git show a2fee3cbd3ae6f9cde291c419b5db6136f0c4c1f:Makefile
 
 You can output that command to a file with a redirection to get a Makefile. The file might be a little old and you might need to update it.
+
+## Helper scripts
+
+   - `sqlite3_to_csv.py` will allow to convert a sqlite3 `.db` file to a `.csv` one, if you change your mind afterwards and wants a csv file instead of a sqlite3 db.
+   - `convert.py` will allow you to get a GPS trace in *GPX* or *KML* format to visualize on a map your path, and the SSID encoutered. This will allow you to check your GPS device and see if it works OK.
