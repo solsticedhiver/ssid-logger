@@ -101,6 +101,19 @@ KML_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     </Document>
 </kml>
 '''
+GPX_HEADER = '''<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="convert.py - https://github.com/solsticedhiver/ssid-logger" xmlns="http://www.topografix.com/GPX/1/1">
+    <metadata>
+        <author>
+            <name>solsTiCe d\'Hiver</name>
+            <email>solstice.dhiver@gmail.com</email>
+            <link>https://github.com/solsticedhiver/ssid-logger</link>
+        </author>
+        <time>{now}</time>
+        <bounds minlat="{minlat}" minlon="{minlon}" maxlat="{maxlat}" maxlon="{maxlon}"/>
+    </metadata>
+    <trk>
+        <trkseg>'''
 
 import sqlite3
 import argparse
@@ -236,7 +249,55 @@ Type: WIFI</description>
         output_file.write(footer.lstrip('\n'))
 
 def write_gpx(places, filename):
-    pass
+    now = datetime.utcnow()
+    minlat = 360.0
+    minlon = 360.0
+    maxlat= 0.0
+    maxlon = 0.0
+    for place in places:
+        if place.lat > maxlat: maxlat = place.lat
+        if place.lon > maxlon: maxlon = place.lon
+        if place.lat < minlat: minlat = place.lat
+        if place.lon < minlon: minlon = place.lon
+
+    with io.open(filename, mode='w', encoding='utf-8') as output_file:
+        output_file.write(GPX_HEADER.format(now=now.isoformat(), minlat=minlat, minlon=minlon, maxlat=maxlat, maxlon=maxlon))
+        for place in places:
+            encryption = 'Unknown'
+            if 'WPA3' in place.authmode:
+                encryption = 'WPA3'
+            elif 'WPA2' in place.authmode:
+                encryption = 'WPA2'
+            elif 'WPA' in place.authmode:
+                encryption = 'WPA'
+            elif 'WEP' in place.authmode:
+                encryption = 'WEP'
+            elif 'ESS' in place.authmode:
+                encryption = 'None'
+
+            trkpt = f'<trkpt lat="{place.lat}" lon="{place.lon}"/>'
+            output_file.write(trkpt)
+        output_file.write('</trkseg>\n</trk>\n')
+        # also add waypoint ?
+        for place in places:
+            wpt = f'''    <wpt lat="{place.lat}" lon="{place.lon}">
+        <ele>{place.alt}</ele>
+        <time>{place.firstseen.isoformat()}</time>
+        <cmt>SSID: {place.ssid}
+Network ID: {place.mac.upper()}
+Encryption: {encryption}
+Signal: {place.rssi}
+Accuracy: {place.acc}
+Type: WIFI</cmt>
+        <desc>SSID: {place.ssid}
+Network ID: {place.mac.upper()}
+Encryption: {encryption}
+Signal: {place.rssi}
+Accuracy: {place.acc}
+Type: WIFI</desc>
+    </wpt>\n'''
+            output_file.write(wpt)
+        output_file.write('</gpx>')
 
 def main():
     parser = argparse.ArgumentParser(description='Convert sqlite3 beacon.db or csv file to kml or gpx GPS track file')
