@@ -191,7 +191,11 @@ def read_csv(input_file):
 
 def write_kml(places, filename):
     with io.open(filename, mode='w', encoding='utf-8') as output_file:
-        places_str = ''
+        # don't use output_file.write(KML_TEMPLATE.format(placemarks=places_str))
+        # to avoid a big string in memory
+        header, footer = KML_TEMPLATE.format(placemarks='==CUT==').split('==CUT==')
+        output_file.write(header)
+
         for place in places:
             encryption = 'Unknown'
             if 'WPA3' in place.authmode:
@@ -227,9 +231,9 @@ Type: WIFI</description>
                     <coordinates>{place.lon},{place.lat}</coordinates>
                 </Point>
             </Placemark>'''
-            places_str += placemark
+            output_file.write(placemark)
 
-        output_file.write(KML_TEMPLATE.format(placemarks = places_str))
+        output_file.write(footer.lstrip('\n'))
 
 def write_gpx(places, filename):
     pass

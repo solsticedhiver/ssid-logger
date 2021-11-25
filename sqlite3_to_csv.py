@@ -96,7 +96,7 @@ def main():
         c.execute(sql)
         conn.commit()
     except sqlite3.DatabaseError as d:
-        print(f'Error: {args.input} is not an sqlite3 db', file=sys.stderr)
+        print(f'Error: {args.input} is not an sqlite3 db ({d})', file=sys.stderr)
         sys.exit(-1)
 
     sql = '''select ap.bssid, ap.ssid, authmode.mode, ts, channel, rssi, lat, lon, alt, acc  from beacon
