@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+# copied from a wigle.net kml download
 KML_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:xal="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <Document>
@@ -109,6 +110,28 @@ import sys
 import csv
 import io
 
+class Place:
+    def __init__(self, mac, ssid, authmode, firstseen, channel, rssi, lat, lon, alt, acc, ttype):
+        self.mac = mac
+        self.ssid = ssid
+        self.authmode = authmode
+        try:
+            firstseen.date()
+            self.firstseen = firstseen
+        except AttributeError:
+            self.firstseen = datetime.strptime(firstseen, "%Y-%m-%d %H:%M:%S")
+        self.channel = int(channel)
+        self.rssi = int(rssi)
+        self.lat = float(lat)
+        self.lon = float(lon)
+        self.alt = float(alt)
+        self.acc = float(acc)
+        self.ttype = ttype
+
+    def __str__(self):
+        return f'mac: {self.mac}, ssid: {self.ssid}, authmode: {self.authmode}, firstseen: {self.firstseen}, channel: {self.channel}, '+ \
+            f'rssi: {self.rssi}, lat: {self.lat}, lon: {self.lon}, alt: {self.alt}, acc: {self.acc}'
+
 def read_db(input_file):
     places = []
     try:
@@ -144,7 +167,8 @@ def read_db(input_file):
         tmp[7] = f'{row[7]:-2.6f}'
         tmp[8] = f'{row[8]:-2.6f}'
         tmp[9] = f'{row[9]:-2.6f}'
-        places.append(tmp)
+        tmp.append('WIFI')
+        places.append(Place(*tmp))
         try:
             row = c.fetchone()
         except sqlite3.OperationalError as o:
@@ -162,52 +186,45 @@ def read_csv(input_file):
         next(csvreader)
         next(csvreader)
         for row in csvreader:
-            del row[-1]
-            places.append(row)
+            places.append(Place(*row))
     return places
 
 def write_kml(places, filename):
     with io.open(filename, mode='w', encoding='utf-8') as output_file:
         places_str = ''
         for place in places:
-            try:
-                place[3] = place[3].isoformat()
-            except AttributeError:
-                place[3] = place[3].replace(' ', 'T')
-
             encryption = 'Unknown'
-            if 'WPA3' in place[2]:
+            if 'WPA3' in place.authmode:
                 encryption = 'WPA3'
-            elif 'WPA2' in place[2]:
+            elif 'WPA2' in place.authmode:
                 encryption = 'WPA2'
-            elif 'WPA' in place[2]:
+            elif 'WPA' in place.authmode:
                 encryption = 'WPA'
-            elif 'WEP' in place[2]:
+            elif 'WEP' in place.authmode:
                 encryption = 'WEP'
-            elif 'ESS' in place[2]:
-                encryption = 'Unknown'
+            elif 'ESS' in place.authmode:
+                encryption = 'None'
 
-            accuracy = float(place[9])
-            if accuracy > 10:
+            if place.acc > 10:
                 confidence = '#lowConfidence'
-            elif accuracy >= 6:
+            elif place.acc >= 6:
                 confidence = '#mediumConfidence'
-            elif accuracy < 6:
+            elif place.acc < 6:
                 confidence = '#highConfidence'
 
             placemark = f'''
             <Placemark>
-                <name>{place[1]}</name>
+                <name>{place.ssid}</name>
                 <open>1</open>
-                <description>Network ID: {place[0].upper()}
+                <description>Network ID: {place.mac.upper()}
 Encryption: {encryption}
-Time: {place[3]}
-Signal: {place[5]}
-Accuracy: {place[9]}
+Time: {place.firstseen.isoformat()}
+Signal: {place.rssi}
+Accuracy: {place.acc}
 Type: WIFI</description>
                 <styleUrl>{confidence}</styleUrl>
                 <Point>
-                    <coordinates>{place[7]},{place[6]}</coordinates>
+                    <coordinates>{place.lon},{place.lat}</coordinates>
                 </Point>
             </Placemark>'''
             places_str += placemark
@@ -220,8 +237,8 @@ def write_gpx(places, filename):
 def main():
     parser = argparse.ArgumentParser(description='Convert sqlite3 beacon.db or csv file to kml or gpx GPS track file')
     parser.add_argument('-i', '--input', required=True, help='input file [sqlite3|csv]')
-    parser.add_argument('--force', action='store_true', default=False, help='force overwrite of existing file')
     parser.add_argument('-o', '--output', required=True, help='output file name [gpx|kml]')
+    parser.add_argument('--force', action='store_true', default=False, help='force overwrite of existing file')
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
