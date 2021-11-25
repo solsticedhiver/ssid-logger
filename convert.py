@@ -191,10 +191,10 @@ def read_db(input_file):
 
     return places
 
-def read_csv(input_file):
+def read_csv(input_file, encoding='utf-8'):
     places = []
-    with open(input_file, 'r', encoding='utf-8') as csvfile:
-        csvreader = csv.reader(csvfile, delimiter=',')
+    with open(input_file, 'r', encoding=encoding) as csvfile:
+        csvreader = csv.reader((line.replace('\0', '') for line in csvfile), delimiter=',')
         # skip the 2 header lines
         next(csvreader)
         next(csvreader)
@@ -319,7 +319,10 @@ def main():
     if in_ext == '.db':
         places = read_db(args.input)
     elif in_ext == '.csv':
-        places = read_csv(args.input)
+        try:
+            places = read_csv(args.input)
+        except UnicodeDecodeError:
+            places = read_csv(args.input, encoding='latin1')
     else:
         print(f'Error: unknown extension {in_ext}', file=sys.stderr)
         sys.exit(-1)
