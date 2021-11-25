@@ -139,7 +139,7 @@ class Place:
         self.lon = float(lon)
         self.alt = float(alt)
         self.acc = float(acc)
-        self.ttype = ttype
+        self.type = ttype
 
     def __str__(self):
         return f'mac: {self.mac}, ssid: {self.ssid}, authmode: {self.authmode}, firstseen: {self.firstseen}, channel: {self.channel}, '+ \
@@ -238,7 +238,7 @@ Encryption: {encryption}
 Time: {place.firstseen.isoformat()}
 Signal: {place.rssi}
 Accuracy: {place.acc}
-Type: WIFI</description>
+Type: {place.type}</description>
                 <styleUrl>{confidence}</styleUrl>
                 <Point>
                     <coordinates>{place.lon},{place.lat}</coordinates>
@@ -283,18 +283,18 @@ def write_gpx(places, filename):
             wpt = f'''    <wpt lat="{place.lat}" lon="{place.lon}">
         <ele>{place.alt}</ele>
         <time>{place.firstseen.isoformat()}</time>
-        <cmt>SSID: {place.ssid}
+        <cmt>Name: {place.ssid}
 Network ID: {place.mac.upper()}
 Encryption: {encryption}
 Signal: {place.rssi}
 Accuracy: {place.acc}
-Type: WIFI</cmt>
-        <desc>SSID: {place.ssid}
+Type: {place.type}</cmt>
+        <desc>Name: {place.ssid}
 Network ID: {place.mac.upper()}
 Encryption: {encryption}
 Signal: {place.rssi}
 Accuracy: {place.acc}
-Type: WIFI</desc>
+Type: {place.type}</desc>
     </wpt>\n'''
             output_file.write(wpt)
         output_file.write('</gpx>')
