@@ -237,7 +237,7 @@ def write_kml(places, filename):
 Encryption: {encryption}
 Time: {place.firstseen.isoformat()}
 Signal: {place.rssi}
-Accuracy: {place.acc}
+Accuracy: {place.acc:2.2f}
 Type: {place.type}</description>
                 <styleUrl>{confidence}</styleUrl>
                 <Point>
@@ -287,13 +287,13 @@ def write_gpx(places, filename):
 Network ID: {place.mac.upper()}
 Encryption: {encryption}
 Signal: {place.rssi}
-Accuracy: {place.acc}
+Accuracy: {place.acc:2.2f}
 Type: {place.type}</cmt>
         <desc>Name: {place.ssid}
 Network ID: {place.mac.upper()}
 Encryption: {encryption}
 Signal: {place.rssi}
-Accuracy: {place.acc}
+Accuracy: {place.acc:2.2f}
 Type: {place.type}</desc>
     </wpt>\n'''
             output_file.write(wpt)
