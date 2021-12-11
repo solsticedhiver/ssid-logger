@@ -1,0 +1,8 @@
+[wrap-file]
+directory = libwifi-0.0.6
+
+source_url = https://github.com/libwifi/libwifi/archive/refs/tags/0.0.6.tar.gz
+source_filename = libwifi-0.0.6.tar.gz
+source_hash = 587032ab59ecd9990fa7fc419784d95327f360abe59af0fccd9bcdfd80c6b854
+
+patch_directory = libwifi
