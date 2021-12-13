@@ -9,8 +9,8 @@ Copyright © 2020 solsTiCe d'Hiver
 #include <math.h>
 #include <inttypes.h>
 #include <libgen.h>
+#include <libwifi.h>
 
-#include "ap_info.h"
 #include "gps_thread.h"
 #include "parsers.h"
 #include "lruc.h"
@@ -143,23 +143,25 @@ int64_t insert_authmode(const char *authmode, sqlite3 *db)
   return authmode_id;
 }
 
-// look for an existing ap_info in the db, using the ssid and the bssid
-int64_t search_ap(struct ap_info ap, sqlite3 *db)
+// look for an existing bss in the db, using the ssid and the bssid
+int64_t search_ap(struct libwifi_bss bss, sqlite3 *db)
 {
   char *sql;
   sqlite3_stmt *stmt;
   int64_t ap_id = 0, ret;
+  char bssid[18];
 
   sql = "select id from ap where bssid=? and ssid=?;";
   if ((ret = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
     return ret * -1;
   } else {
-    if ((ret = sqlite3_bind_text(stmt, 1, ap.bssid, -1, NULL)) != SQLITE_OK) {
+    sprintf(bssid, MACSTR, MAC2STR(bss.bssid));
+    if ((ret = sqlite3_bind_text(stmt, 1, bssid, -1, NULL)) != SQLITE_OK) {
       fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
       return ret * -1;
     }
-    if ((ret = sqlite3_bind_text(stmt, 2, ap.ssid, -1, NULL)) != SQLITE_OK) {
+    if ((ret = sqlite3_bind_text(stmt, 2, bss.ssid, -1, NULL)) != SQLITE_OK) {
       fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
       return ret * -1;
     }
@@ -180,41 +182,41 @@ int64_t search_ap(struct ap_info ap, sqlite3 *db)
   return ap_id;
 }
 
-// search ap_info in the db or insert it if not found
-int64_t insert_ap(struct ap_info ap, sqlite3 *db)
+// search bss in the db or insert it if not found
+int64_t insert_ap(struct libwifi_bss bss, sqlite3 *db)
 {
   int64_t ret, ap_id = 0;
   char sql[128];
 
-  ap_id = search_ap(ap, db);
+  ap_id = search_ap(bss, db);
   if (!ap_id) {
     // if ever the ssid is longer than 32 chars, it is truncated at 128-18-length of string below
-    snprintf(sql, 128, "insert into ap (bssid, ssid) values (\"%s\", \"%s\");", ap.bssid, ap.ssid);
+    snprintf(sql, 128, "insert into ap (bssid, ssid) values (\""MACSTR"\", \"%s\");", MAC2STR(bss.bssid), bss.ssid);
     if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
       fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
       return ret * -1;
     }
-    ap_id = search_ap(ap, db);
+    ap_id = search_ap(bss, db);
   }
 
   return ap_id;
 }
 
-// insert an ap_info into the db
-int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *authmode_pk_cache, lruc *ap_pk_cache)
+// insert an bss into the db
+int insert_beacon(struct libwifi_bss bss, struct gps_loc gloc, sqlite3 *db, lruc *authmode_pk_cache, lruc *ap_pk_cache)
 {
   int ret;
   int64_t ap_id = 0, authmode_id = 0;
   void *value = NULL;
 
   // look for ap in ap_pk_cache
-  size_t ap_key_len = 18 + ap.ssid_len;
+  size_t ap_key_len = 18 + strnlen(bss.ssid, 32);
   char *ap_key = malloc(ap_key_len * sizeof(char));
   // concat bssid and ssid to use it as key in ap_pk_cache
-  snprintf(ap_key, ap_key_len + 1, "%s%s", ap.bssid, ap.ssid);
+  snprintf(ap_key, ap_key_len + 1, MACSTR"%s", MAC2STR(bss.bssid), bss.ssid);
   lruc_get(ap_pk_cache, ap_key, ap_key_len, &value);
   if (value == NULL) {
-    ap_id = insert_ap(ap, db);
+    ap_id = insert_ap(bss, db);
     // insert ap_id in ap_pk_cache
     int64_t *new_value = malloc(sizeof(int64_t));
     *new_value = ap_id;
@@ -226,7 +228,7 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *aut
 
   value = NULL;
   // look for authmode in authmode_pk_cache
-  char *authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
+  char *authmode = authmode_from_crypto(bss);
   if (authmode == NULL) {
     authmode = strdup("");
   }
@@ -250,7 +252,7 @@ int insert_beacon(struct ap_info ap, struct gps_loc gloc, sqlite3 *db, lruc *aut
   char sql[256];
   snprintf(sql, 256, "insert into beacon (ts, ap, channel, rssi, lat, lon, alt, acc, authmode)"
     "values (%lu, %"PRId64", %u, %d, %f, %f, %f, %f, %"PRId64");",
-    gloc.ftime.tv_sec, ap_id, ap.channel, ap.rssi, gloc.lat, gloc.lon, isfinite(gloc.alt) ? gloc.alt : 0.0, gloc.acc, authmode_id);
+    gloc.ftime.tv_sec, ap_id, bss.channel, bss.signal, gloc.lat, gloc.lon, isfinite(gloc.alt) ? gloc.alt : 0.0, gloc.acc, authmode_id);
   if ((ret = sqlite3_exec(db, sql, NULL, 0, NULL)) != SQLITE_OK) {
     fprintf(stderr, "Error: %s (%s:%d in %s)\n", sqlite3_errmsg(db), basename(__FILE__), __LINE__, __func__);
     return ret * -1;

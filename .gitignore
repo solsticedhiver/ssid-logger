@@ -4,3 +4,5 @@ beacon.db
 *.nmea
 *.csv
 .vscode
+subprojects/packagecache
+subprojects/libwifi*

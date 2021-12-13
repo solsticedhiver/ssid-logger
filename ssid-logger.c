@@ -32,6 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <sys/stat.h>
 #endif
 #include <semaphore.h>
+#include <libwifi.h>
 
 #include "queue.h"
 #include "hopper_thread.h"
@@ -42,12 +43,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "blink_thread.h"
 #endif
 #include "db.h"
-#include "ap_info.h"
 
 #include "config.h"
 
 pcap_t *handle;                 // global, to use it in sigint_handler
-queue_t *queue;                 // queue to hold parsed ap_info
+queue_t *queue;                 // queue to hold parsed bss
 
 pthread_t hopper;
 pthread_t logger;
@@ -77,7 +77,7 @@ void sigint_handler(int s)
   pcap_breakloop(handle);
 }
 
-// produces ap_info and store them in the queue
+// produces bss and store them in the queue
 void process_packet(uint8_t * args, const struct pcap_pkthdr *header, const uint8_t *packet)
 {
   uint16_t freq;
@@ -88,13 +88,12 @@ void process_packet(uint8_t * args, const struct pcap_pkthdr *header, const uint
     return;
   }
 
-  struct ap_info *ap = parse_beacon_frame(packet, header->len, offset);
-  ap->freq = freq;
-  ap->rssi = rssi;
+  struct libwifi_bss *bss = parse_beacon_frame(packet, header->caplen, offset);
+  bss->signal = rssi;
 
   sem_wait(&queue_full);
   pthread_mutex_lock(&mutex_queue);
-  enqueue(queue, ap);
+  enqueue(queue, bss);
   pthread_mutex_unlock(&mutex_queue);
   sem_post(&queue_empty);
 }
@@ -262,7 +261,7 @@ void initialize_pcap(pcap_t **handle, const char *iface)
   if (pcap_compile(*handle, &bfp, filter_exp, 1, PCAP_NETMASK_UNKNOWN) == -1) {
     fprintf(stderr, "Error: couldn't parse filter %s: %s\n",
             filter_exp, pcap_geterr(*handle));
-    goto handle_failure;
+    exit(EXIT_FAILURE);
   }
   if (pcap_setfilter(*handle, &bfp) == -1) {
     fprintf(stderr, "Error: couldn't install filter '%s': %s\n",
@@ -272,9 +271,6 @@ void initialize_pcap(pcap_t **handle, const char *iface)
   pcap_freecode(&bfp);
 
   return;
-
-handle_failure:
-  pcap_close(*handle);
 }
 
 int main(int argc, char *argv[])
@@ -299,7 +295,7 @@ int main(int argc, char *argv[])
   }
   pthread_detach(hopper);
 
-  // the queue holds the ap_infos produced by process_packet()
+  // the queue holds the bsses produced by process_packet()
   // the semaphores manage the synchronisation with process_queue() (in logger_thread)
   queue = new_queue(MAX_QUEUE_SIZE);
   sem_init(&queue_empty, 0, 0);
@@ -432,10 +428,10 @@ logger_failure:
 
   // free up elements of the queue
   int qs = queue->size;
-  struct ap_info *ap;
+  struct libwifi_bss *bss;
   for (int i = 0; i < qs; i++) {
-    ap = (struct ap_info *) dequeue(queue);
-    free_ap_info(ap);
+    bss = (struct libwifi_bss *) dequeue(queue);
+    libwifi_free_bss(bss);
   }
   free(queue);
   pthread_cancel(hopper);

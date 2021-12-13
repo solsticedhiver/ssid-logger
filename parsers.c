@@ -10,10 +10,12 @@ Copyright © 2020 solsTiCe d'Hiver
 #include <time.h>
 #include <math.h>
 
+#include <libwifi.h>
+#include <assert.h>
+
 #include "radiotap_iter.h"
 #include "parsers.h"
 #include "gps_thread.h"
-#include "ap_info.h"
 
 /* Cipher suite selectors
 00-0F-AC-00 Use group cipher suite
@@ -94,51 +96,6 @@ char *str_replace(const char *orig, const char *rep, const char *with)
     return result;
 }
 
-void free_cipher_suite(struct cipher_suite *cs)
-{
-  if (cs == NULL)
-    return;
-
-  uint16_t pcsc = cs->pairwise_cipher_count;
-  for (int i = 0; i < pcsc; i++) {
-    free(cs->pairwise_cipher_suite[i]);
-  }
-  free(cs->pairwise_cipher_suite);
-
-  uint16_t akmsc = cs->akm_cipher_count;
-  for (int i = 0; i < akmsc; i++) {
-    free(cs->akm_cipher_suite[i]);
-  }
-  free(cs->akm_cipher_suite);
-
-  free(cs);
-  cs = NULL;
-
-  return;
-}
-
-struct cipher_suite *parse_cipher_suite(uint8_t *start)
-{
-  struct cipher_suite *cs = malloc(sizeof(struct cipher_suite));
-
-  memcpy(cs->group_cipher_suite, start, 4);
-
-  uint16_t pcsc = cs->pairwise_cipher_count = *(start + 4);
-  cs->pairwise_cipher_suite = malloc(pcsc * sizeof(uint8_t *));
-  for (int i = 0; i < pcsc; i++) {
-    cs->pairwise_cipher_suite[i] = malloc(4 * sizeof(uint8_t));
-    memcpy(cs->pairwise_cipher_suite[i], start + 4 + 2 + i * 4, 4);
-  }
-
-  uint16_t akmsc = cs->akm_cipher_count = *(start + 4 + 2 + pcsc * 4);
-  cs->akm_cipher_suite = malloc(akmsc * sizeof(uint8_t *));
-  for (int i = 0; i < akmsc; i++) {
-    cs->akm_cipher_suite[i] = malloc(4 * sizeof(uint8_t));
-    memcpy(cs->akm_cipher_suite[i], start + 4 + 2 + pcsc * 4 + 2 + i * 4, 4);
-  }
-  return cs;
-}
-
 // parse radiotap header to get frequency and rssi
 // returns radiotap header size or -1 on error
 int8_t parse_radiotap_header(const uint8_t *packet, uint16_t *freq, int8_t *rssi)
@@ -199,261 +156,214 @@ int8_t parse_radiotap_header(const uint8_t *packet, uint16_t *freq, int8_t *rssi
   return offset;
 }
 
-// parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
-struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, int8_t offset)
-{
-  struct ap_info *ap = malloc(sizeof(struct ap_info));
+void _get_unicast_ciphers(struct libwifi_bss *bss, char *buf) {
+  memset(buf, 0, LIBWIFI_SECURITY_BUF_LEN);
 
-  // BSSID
-  const uint8_t *bssid_addr = packet + offset + 2 + 2 + 6 + 6;   // FC + duration + DA + SA
-  sprintf(ap->bssid, "%02x:%02x:%02x:%02x:%02x:%02x", bssid_addr[0],
-    bssid_addr[1], bssid_addr[2], bssid_addr[3], bssid_addr[4], bssid_addr[5]);
+  int offset = 0;
+  int append = 0;
 
-  // Capability Info
-  const uint8_t *ci_addr = bssid_addr + 6 + 2 + 8 + 2;
-  uint16_t ci_fields;
-  memcpy(&ci_fields, ci_addr, sizeof(ci_fields));
-  ap->ess = (bool) (ci_fields & 0x0001);
-  ap->privacy = (bool) ((ci_fields & 0x0010) >> 4);
-
-  ap->ssid = NULL;
-  uint8_t *ie = (uint8_t *) ci_addr + 2;
-  uint8_t ie_len;
-  ap->channel = 0, ap->ssid_len = 0;
-  ap->wps = false/*, utf8_ssid = false*/;
-
-  ap->rsn = NULL;
-  ap->msw = NULL;
-  // iterate over Information Element to look for SSID and RSN crypto and MicrosoftWPA
-  while (ie < packet + packet_len) {
-    ie_len = *(ie + 1);
-    if ((ie + ie_len + 2 <= packet + packet_len)) {     // just double check that this is an IE with length inside packet
-      switch (*ie) {
-      case 0:                  // SSID aka IE with id 0
-        ap->ssid_len = ie_len;
-        ap->ssid = (char *) malloc((ap->ssid_len + 1) * sizeof(uint8_t));        // AP name
-        snprintf(ap->ssid, ap->ssid_len + 1, "%s", ie + 2);
-        break;
-      case 3:                  // IE with id 3 is DS parameter set ~= channel
-        ap->channel = *(ie + 2);
-        break;
-      case 48:                 // parse RSN IE
-        if (ie_len > 2) {
-          ap->rsn = parse_cipher_suite(ie + 4);
-        }
-        break;
-      case 127:                // Extended Capabilities IE
-        if (ie_len >= 7) {
-          //utf8_ssid = (bool) (*(ie + 1 + 7) & 0x01);
-        }
-        break;
-      case 221:
-        if (memcmp(ie + 2, MS_OUI "\001\001", 5) == 0) {
-          // parse MicrosoftWPA IE
-          ap->msw = parse_cipher_suite(ie + 8);
-        } else if (memcmp(ie + 2, WPS_ID, 4) == 0) {
-          ap->wps = true;
-        }
-        break;
-      }
-    }
-    ie = ie + ie_len + 2;
+  if (bss->wpa_info.num_unicast_cipher_suites == 0) {
+    snprintf(buf + offset, LIBWIFI_SECURITY_BUF_LEN, "None");
+    return;
   }
-  return ap;
+
+  for (int i=0; i< bss->wpa_info.num_unicast_cipher_suites; i++) {
+    if (bss->wpa_info.unicast_cipher_suites[i].suite_type == 1) {
+      _libwifi_add_sec_item(buf, &offset, &append, "WEP40");
+    }
+    if (bss->wpa_info.unicast_cipher_suites[i].suite_type == 2) {
+      _libwifi_add_sec_item(buf, &offset, &append, "TKIP");
+    }
+    if (bss->wpa_info.unicast_cipher_suites[i].suite_type == 4) {
+      _libwifi_add_sec_item(buf, &offset, &append, "CCMP");
+    }
+    if (bss->wpa_info.unicast_cipher_suites[i].suite_type == 5) {
+      _libwifi_add_sec_item(buf, &offset, &append, "WEP104");
+    }
+  }
+}
+
+// parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
+struct libwifi_bss *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, int8_t offset)
+{
+  unsigned long data_len = packet_len;
+  unsigned char *data = (unsigned char *) packet;
+
+  // Initialise a libwifi_frame struct and populate it
+  struct libwifi_frame frame = {0};
+  int ret = libwifi_get_wifi_frame(&frame, data, data_len, 1 /* has_radiotap*/);
+  if (ret != 0) {
+    return NULL;
+  }
+
+  // Double check that the frame is a beacon frame
+  if (frame.frame_control.type == TYPE_MANAGEMENT && frame.frame_control.subtype == SUBTYPE_BEACON) {
+    struct libwifi_bss *bss = malloc(sizeof(struct libwifi_bss));
+    ret = libwifi_parse_beacon(bss, &frame);
+    if (ret != 0) {
+      libwifi_free_bss(bss);
+      return NULL;
+    }
+    return bss;
+  }
+  return NULL;
 }
 
 // construct a string from crypto cipher suites and variables
-char *authmode_from_crypto(struct cipher_suite *rsn, struct cipher_suite *msw,
-                            bool ess, bool privacy, bool wps)
+char *authmode_from_crypto(struct libwifi_bss bss)
 {
   char authmode[MAX_AUTHMODE_LEN];
   authmode[0] = '\0';           // this is needed for strcat to work
-  uint8_t last_byte;
   long int length = MAX_AUTHMODE_LEN - 1; // used to avoid overflowing authmode
-  bool eap_ft = false, psk_ft = false, add_pc = false;
 
-  if (msw != NULL) {
-    strncat(authmode, "[WPA-", length);
-    length -= 5;
-    last_byte = (uint8_t) msw->akm_cipher_suite[0][3];
-    switch (last_byte) {
-    case 1:
-      strncat(authmode, "EAP-", length);
-      length -= 4;
-      break;
-    case 2:
-      strncat(authmode, "PSK-", length);
-      length -= 4;
-      break;
+  char sec_buf[LIBWIFI_SECURITY_BUF_LEN];
+  char *sec_types[4];
+  char *context = NULL, *token;
+  int i=0, num_sec_types;
+  libwifi_get_security_type(&bss, sec_buf);
+  if (!strcmp(sec_buf, "None")) {
+    num_sec_types = 0;
+  } else {
+    context = sec_buf;
+    while ((token = strtok_r(NULL, ", ", &context)) != NULL) {
+      sec_types[i++] = strdup(token);
     }
-    bool first = true;
-    for (int i = 0; i < msw->pairwise_cipher_count; i++) {
-      last_byte = (uint8_t) msw->pairwise_cipher_suite[i][3];
-      if (!first) {
-        strncat(authmode, "+", length);
+    num_sec_types= i;
+  }
+
+  char *unicast_ciphers[LIBWIFI_MAX_CIPHER_SUITES];
+  _get_unicast_ciphers(&bss, sec_buf);
+  i=0;
+  context = sec_buf;
+  while ((token = strtok_r(NULL, ", ", &context)) != NULL) {
+    unicast_ciphers[i++] = strdup(token);
+  }
+  int num_unicast_ciphers = i;
+
+  char *pairwise_ciphers[LIBWIFI_MAX_CIPHER_SUITES];
+  libwifi_get_pairwise_ciphers(&bss, sec_buf);
+  int num_pairwire_ciphers;
+  if (!strcmp(sec_buf, "None")) {
+    num_pairwire_ciphers = 0;
+  } else {
+    i=0;
+    context = sec_buf;
+    while ((token = strtok_r(NULL, ", ", &context)) != NULL) {
+        pairwise_ciphers[i++] = strdup(token);
+    }
+    num_pairwire_ciphers = i;
+  }
+
+  char *auth_key[LIBWIFI_MAX_CIPHER_SUITES];
+  libwifi_get_auth_key_suites(&bss, sec_buf);
+  int num_auth_key;
+  if (!strcmp(sec_buf, "None")) {
+    num_auth_key = 0;
+  } else {
+    i=0;
+    context = sec_buf;
+    while ((token = strtok_r(NULL, ", ", &context)) != NULL) {
+        auth_key[i++] = strdup(token);
+    }
+    num_auth_key = i;
+  }
+
+  char tmp[256];
+  for (i=num_sec_types-1; i>= 0; i--) {
+    if (!strcmp(sec_types[i] , "WEP")) {
+      strncat(authmode, "[WEP]", length);
+      length -= 5;
+      continue;
+    }
+    sprintf(tmp, "[%s-", sec_types[i]);
+    strncat(authmode, tmp, length);
+    length -= strlen(tmp);
+    for (int j=0; j<num_auth_key; j++) {
+      if (j != num_auth_key-1) {
+        sprintf(tmp, "%s/", auth_key[j]);
         length -= 1;
       } else {
-        first = false;
+        sprintf(tmp, "%s", auth_key[j]);
       }
-      switch (last_byte) {
-      case 2:
-        strncat(authmode, "TKIP", length);
-        length -= 4;
-        break;
-      case 4:
-        strncat(authmode, "CCMP", length);
-        length -= 4;
-        break;
-      case 1:
-        strncat(authmode, "WEP-40", length);
-        length -= 6;
-        break;
-      case 5:
-        strncat(authmode, "WEP-104", length);
-        length -= 7;
-        break;
-      }
+      strncat(authmode, tmp, length);
+      length -= strlen(auth_key[j]);
     }
-    strncat(authmode, "]", length);
+    strncat(authmode, "-", length);
     length -= 1;
-  }
-  if (rsn != NULL) {
-    strncat(authmode, "[WPA2-", length);
-    length -= 6;
-    for (int j=0; j<rsn->akm_cipher_count; j++) {
-      last_byte = (uint8_t) rsn->akm_cipher_suite[j][3];
-      if (length < 0) {
-        // overflow
-        return NULL;
-      }
-      switch (last_byte) {
-      case 1:
-        strncat(authmode, "EAP-", length);
-        add_pc = true;
-        length -= 4;
-        break;
-      case 2:
-        strncat(authmode, "PSK-", length);
-        add_pc = true;
-        length -= 4;
-        break;
-      case 3  :
-        eap_ft = true;
-        break;
-      case 4:
-        psk_ft = true;
-        break;
-      case 5:
-        strncat(authmode, "EAP-SHA256-", length);
-        add_pc = true;
-        length -= 11;
-        break;
-      case 6:
-        strncat(authmode, "PSK-SHA256-", length);
-        add_pc = true;
-        length -= 11;
-        break;
-      case 8:
-        strncat(authmode, "SAE-", length);
-        add_pc = true;
-        length -= 4;
-        break;
-      }
-      if (add_pc) {
-        add_pc = false;
-        bool first_pc = true;
-        for (int i = 0; i < rsn->pairwise_cipher_count; i++) {
-          last_byte = (uint8_t) rsn->pairwise_cipher_suite[i][3];
-          if (length < 0) {
-            // overflow
-            return NULL;
-          }
-          if (!first_pc) {
-            strncat(authmode, "+", length);
-            length -= 1;
-          } else {
-            first_pc = false;
-          }
-          switch (last_byte) {
-          case 2:
-            strncat(authmode, "TKIP", length);
-            length -= 4;
-            break;
-          case 4:
-            strncat(authmode, "CCMP", length);
-            length -= 4;
-            break;
-          case 1:
-            strncat(authmode, "WEP-40", length);
-            length -= 6;
-            break;
-          case 5:
-            strncat(authmode, "WEP-104", length);
-            length -= 7;
-            break;
-          case 6:
-            strncat(authmode, "BIP", length);
-            length -= 3;
-            break;
-          }
+    if (!strcmp(sec_types[i], "WPA")) {
+      for(int j=0; j<num_unicast_ciphers; j++) {
+        if (j != num_unicast_ciphers-1) {
+          sprintf(tmp, "%s+", unicast_ciphers[j]);
+          length -= 1;
+        } else {
+          sprintf(tmp, "%s", unicast_ciphers[j]);
         }
+        strncat(authmode, tmp, length);
+        length -= strlen(unicast_ciphers[j]);
+      }
+    } else {
+      for(int j=0; j<num_pairwire_ciphers; j++) {
+        if (j != num_pairwire_ciphers-1) {
+          sprintf(tmp, "%s+", pairwise_ciphers[j]);
+          length -= 1;
+        } else {
+          sprintf(tmp, "%s", pairwise_ciphers[j]);
+        }
+        strncat(authmode, tmp, length);
+        length -= strlen(pairwise_ciphers[j]);
       }
     }
     strncat(authmode, "]", length);
     length -= 1;
   }
-  if (eap_ft) {
-    eap_ft = false;
-    char *tmp = str_replace(authmode, "WPA2-EAP-","WPA2-EAP+FT/EAP-");
-    strncpy(authmode, tmp, MAX_AUTHMODE_LEN);
-    authmode[MAX_AUTHMODE_LEN - 1] = '\0';
-    free(tmp);
-    length -= 7;
-  }
-  if (psk_ft) {
-    psk_ft = false;
-    char *tmp = str_replace(authmode, "WPA2-PSK-","WPA2-PSK+FT/PSK-");
-    strncpy(authmode, tmp, MAX_AUTHMODE_LEN);
-    authmode[MAX_AUTHMODE_LEN - 1] = '\0';
-    free(tmp);
-    length -= 7;
-  }
-  if (!rsn && !msw && privacy) {
-    strncat(authmode, "[WEP]", length);
-    length -= 5;
-  }
-  if (wps) {
+  if (bss.wps) {
     strncat(authmode, "[WPS]", length);
     length -= 5;
   }
-  if (ess) {
-    strncat(authmode, "[ESS]", length);
-    length -= 5;
-  }
+  strncat(authmode, "[ESS]", length);
+  length -= 5;
 
+  // replacement
+  char *tmp_rep = str_replace(authmode, "_", "+");
+  strncpy(authmode, tmp_rep, MAX_AUTHMODE_LEN);
+  tmp_rep = str_replace(authmode, "802.1X", "EAP");
+  strncpy(authmode, tmp_rep, MAX_AUTHMODE_LEN);
+  tmp_rep = str_replace(authmode, "CCMP128", "CCMP");
+  strncpy(authmode, tmp_rep, MAX_AUTHMODE_LEN);
+  free(tmp_rep);
+
+  for (i=0; i< num_sec_types; i++) {
+    free(sec_types[i]);
+  }
+  for (i=0; i< num_pairwire_ciphers; i++) {
+    free(pairwise_ciphers[i]);
+  }
+  for (i=0; i< num_auth_key; i++) {
+    free(auth_key[i]);
+  }
   return strndup(authmode, MAX_AUTHMODE_LEN-length);
 }
 
 // turn ap_info into a string (used if format is csv)
-char *ap_to_str(struct ap_info ap, struct gps_loc gloc)
+char *bss_to_str(struct libwifi_bss bss, struct gps_loc gloc)
 {
   char tail[64], firstseen[21];
-  char *authmode, *ap_str;
+  char *authmode, *bss_str;
 
-  authmode = authmode_from_crypto(ap.rsn, ap.msw, ap.ess, ap.privacy, ap.wps);
+  authmode = authmode_from_crypto(bss);
   if (authmode == NULL) {
     authmode = strdup("");
   }
   strftime(firstseen, 20, "%Y-%m-%d %H:%M:%S", gmtime(&gloc.ftime.tv_sec));
-  sprintf(tail, "%d,%d,%-2.6f,%-2.6f,%-2.6f,%-2.6f,WIFI", ap.channel, ap.rssi, gloc.lat,
+  sprintf(tail, "%d,%d,%-2.6f,%-2.6f,%-2.6f,%-2.6f,WIFI", bss.channel, bss.signal, gloc.lat,
     gloc.lon, gloc.alt, gloc.acc);
 
-  size_t len = 18 + ap.ssid_len + strlen(authmode) + 20 + 55;
-  ap_str = malloc(len+1);
-  snprintf(ap_str, len, "%s,%s,%s,%s,%s", ap.bssid, ap.ssid_len > 0 ? ap.ssid : "", authmode, firstseen, tail);
+  size_t len = 18 + strnlen(bss.ssid, 32) + strlen(authmode) + 20 + 55;
+  bss_str = malloc(len+1);
+  snprintf(bss_str, len, MACSTR ",%s,%s,%s,%s", MAC2STR(bss.bssid), bss.ssid, authmode, firstseen, tail);
   free(authmode);
 
-  return ap_str;
+  return bss_str;
 
 //MAC,SSID,AuthMode,FirstSeen,Channel,RSSI,CurrentLatitude,CurrentLongitude,AltitudeMeters,AccuracyMeters,Type
 //A4:3E:51:XX:XX:XX,Livebox-XXXX,[WPA-PSK-CCMP+TKIP] [WPA2-PSK-CCMP+TKIP][ESS],2020-02-15 17:52:51,6,-78,50.0000000000,-3.0000000000,19.308001,0,WIFI
@@ -517,31 +427,4 @@ int parse_os_release(char **os_name, char **os_version)
   fclose(fp);
 
   return 0;
-}
-
-// turn a cipher_suite object into a printable string (used for debug)
-void print_cipher_suite(struct cipher_suite *cs)
-{
-  if (cs == NULL) {
-    printf("NULL\n");
-    return;
-  }
-
-  printf("Group cipher suite: 0x%02X%02X%02X%02X\n", cs->group_cipher_suite[0],
-    cs->group_cipher_suite[1], cs->group_cipher_suite[2],
-    cs->group_cipher_suite[3]);
-  printf("Pairwise cipher count: %u, suite:", cs->pairwise_cipher_count);
-  for (int i=0; i<cs->pairwise_cipher_count; i++) {
-    printf(" 0x%02X%02X%02X%02X", cs->pairwise_cipher_suite[i][0],
-    cs->pairwise_cipher_suite[i][1],cs->pairwise_cipher_suite[i][2],
-    cs->pairwise_cipher_suite[i][3]);
-  }
-  printf("\n");
-  printf("AKM cipher count: %u, suite:", cs->akm_cipher_count);
-  for (int i=0; i<cs->akm_cipher_count; i++) {
-    printf(" 0x%02X%02X%02X%02X", cs->akm_cipher_suite[i][0],
-    cs->akm_cipher_suite[i][1],cs->akm_cipher_suite[i][2],
-    cs->akm_cipher_suite[i][3]);
-  }
-  printf("\n");
 }

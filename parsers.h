@@ -13,31 +13,16 @@
 
 #define MAX_AUTHMODE_LEN 128L
 
-struct cipher_suite {
-  uint8_t group_cipher_suite[4];
-  uint16_t pairwise_cipher_count;
-  uint8_t **pairwise_cipher_suite;
-  uint16_t akm_cipher_count;
-  uint8_t **akm_cipher_suite;
-};
-
-void free_cipher_suite(struct cipher_suite *cs);
-
-struct cipher_suite *parse_cipher_suite(uint8_t * start);
-
 int8_t parse_radiotap_header(const uint8_t * packet, uint16_t * freq,
   int8_t * rssi);
 
-struct ap_info *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len,
+struct libwifi_bss *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len,
   int8_t offset);
 
-char *authmode_from_crypto(struct cipher_suite *rsn,
-  struct cipher_suite *msw, bool ess, bool privacy, bool wps);
+char *authmode_from_crypto(struct libwifi_bss bss);
 
-char *ap_to_str(struct ap_info ap, struct gps_loc gloc);
+char *bss_to_str(struct libwifi_bss bss, struct gps_loc gloc);
 
 int parse_os_release(char **os_name, char **os_version);
-
-void print_cipher_suite(struct cipher_suite *cs);
 
 #endif

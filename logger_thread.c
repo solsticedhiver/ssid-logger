@@ -15,13 +15,13 @@ Copyright © 2020 solsTiCe d'Hiver
 #include <sys/prctl.h>
 #endif
 #include <semaphore.h>
+#include <libwifi.h>
 
 #include "parsers.h"
 #include "queue.h"
 #include "logger_thread.h"
 #include "gps_thread.h"
 #include "db.h"
-#include "ap_info.h"
 #include "lruc.h"
 #include "config.h"
 
@@ -50,7 +50,7 @@ void cleanup_caches(void *arg)
 // worker thread that will process the queue filled by process_packet()
 void *process_queue(void *args)
 {
-  struct ap_info *ap;
+  struct libwifi_bss *bss;
   struct timespec now;
   struct gps_loc tmp_gloc;
 
@@ -72,11 +72,11 @@ void *process_queue(void *args)
   while (true) {
     sem_wait(&queue_empty);
     pthread_mutex_lock(&mutex_queue);
-    ap = (struct ap_info *) dequeue(queue);
+    bss = (struct libwifi_bss *) dequeue(queue);
     pthread_mutex_unlock(&mutex_queue);
     sem_post(&queue_full);
 
-    // process the ap_info
+    // process the bss
     pthread_mutex_lock(&mutex_gloc);
     tmp_gloc = gloc;
     pthread_mutex_unlock(&mutex_gloc);
@@ -111,15 +111,15 @@ void *process_queue(void *args)
         goto nolog;
       }
       if (!format_csv) {
-        insert_beacon(*ap, tmp_gloc, db, authmode_pk_cache, ap_pk_cache);
+        insert_beacon(*bss, tmp_gloc, db, authmode_pk_cache, ap_pk_cache);
       } else {
-        char *tmp = ap_to_str(*ap, tmp_gloc);
+        char *tmp = bss_to_str(*bss, tmp_gloc);
         fprintf(file_ptr, "%s\n", tmp);
         free(tmp);
       }
     }
 nolog:
-    free_ap_info(ap);
+    libwifi_free_bss(bss);
 
     // commit our data if time elapsed is greater than DB_CACHE_TIME
     clock_gettime(CLOCK_MONOTONIC, &now);

@@ -3,7 +3,7 @@ project('ssid-logger', 'c', version: '0.2.3')
 cc = meson.get_compiler('c')
 
 src = ['ssid-logger.c', 'hopper_thread.c', 'parsers.c', 'queue.c', 'radiotap.c',
-  'logger_thread.c', 'gps_thread.c', 'db.c', 'ap_info.c', 'lruc.c']
+  'logger_thread.c', 'gps_thread.c', 'db.c', 'lruc.c']
 pcap_dep = dependency('pcap', version: '>1.0')
 pthread_dep = dependency('threads')
 nl_dep = dependency('libnl-3.0')
@@ -50,7 +50,7 @@ executable('ssid-logger', src,
 
 if cmocka_dep.found()
   t = executable('parsers_test',
-    ['tests/parsers_test.c', 'parsers.c', 'queue.c', 'db.c', 'lruc.c', 'radiotap.c', 'ap_info.c'],
+    ['tests/parsers_test.c', 'parsers.c', 'queue.c', 'db.c', 'lruc.c', 'radiotap.c'],
     dependencies: [cmocka_dep, pcap_dep, sqlite3_dep, libwifi_dep])
   test('Test parsers', t)
 endif

@@ -13,8 +13,9 @@
 
 #include <unistd.h>
 
+#include <libwifi.h>
+
 #include "../parsers.h"
-#include "../ap_info.h"
 #include "../gps_thread.h"
 #include "../queue.h"
 
@@ -78,19 +79,19 @@ static void test_parse_beacon_frame_from_pcap(void **state)
     int8_t rssi;
 
     int8_t offset = parse_radiotap_header(pkt, &freq, &rssi);
-    struct ap_info *ap = parse_beacon_frame(pkt, header->len, offset);
-    ap->freq = freq;
-    ap->rssi = rssi;
-    char *tmp = ap_to_str(*ap, gloc);
-    //printf("%s\n", tmp);fflush(stdout);
+    struct libwifi_bss *bss = parse_beacon_frame(pkt, header->len, offset);
+    bss->signal = rssi;
+    char *tmp = bss_to_str(*bss, gloc);
+    printf("%s\n", tmp);fflush(stdout);
     assert_string_equal(tmp, beacons[count]);
     free(tmp);
     count++;
-    free_ap_info(ap);
+    libwifi_free_bss(bss);
   }
   free(handle);
 }
 
+#if 0
 static void test_authmode_from_crypto(void **state)
 {
   (void) state; // unused
@@ -223,11 +224,14 @@ static void test_authmode_from_crypto(void **state)
   rsn->akm_cipher_count = 2;
   free_cipher_suite(rsn);
 }
+#endif
 
 int main(void) {
   const struct CMUnitTest tests[] = {
     cmocka_unit_test(test_parse_beacon_frame_from_pcap),
+    #if 0
     cmocka_unit_test(test_authmode_from_crypto),
+    #endif
   };
   return cmocka_run_group_tests(tests, NULL, NULL);
 }
