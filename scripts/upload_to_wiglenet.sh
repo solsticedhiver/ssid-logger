@@ -1,5 +1,7 @@
 #!/bin/bash
 
+sql2csv="./sqlite3_to_csv.py"
+
 # look on https://wigle.net/account for your API Name and API Token
 APIKEY="APIName:APIToken"
 
@@ -10,6 +12,11 @@ usage() {
 upload() {
 	curl -s -H 'Accept:application/json' -u $APIKEY --basic -F file=@${1} -F donate=false https://api.wigle.net/api/v2/file/upload|jq '.'
 }
+
+if ! [ -f "$sql2csv" ] ;then
+	echo "Error: sqlite3_to_csv.py script has not been found" >&2
+	exit 1
+fi
 
 if [ $# -eq 0 ] || [ $1 == "-h" ] || [ $1 == "--help" ] ;then
 	usage
@@ -26,7 +33,7 @@ if [ $# -ge 1 ] ;then
 		if [[ "${f##*.}" == "db" ]] ;then
 			wf=${f%%.db}.csv
 			echo ":: Converting $f to $wf"
-			../sqlite3_to_csv.py -i $f -o "$wf"
+			$sql2csv -i $f -o "$wf"
 		else
 			wf=$f
 		fi
