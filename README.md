@@ -9,7 +9,7 @@ You will need a **wifi card** that is able to run in **monitor mode** and a GPS 
 
 It can log to a **sqlite3** database (by default) or to a **csv** file.
 
-This is an **all-in-one** solution to log SSIDs. Even though *kismet* is a great software, it is too heavy to run on a rpi0, unless you run only the capture binary(ies) and also use another more capable device to run the server on.
+This is an **all-in-one** solution to log SSIDs. Even though *kismet* is a great software; it's wardrive mode might not be light enough for a rpi0 (may be a rpi0 v2 ?)
 
 Note: ssid-logger does not automatically export the collected data to wigle.net. You will have to do it manually, if you want to.
 
@@ -45,9 +45,9 @@ The complete usage:
 You also need *gpsd* up and running.
 
 ### Examples
-On Ubuntu 18.04 or Raspbian, one needs to run the following command to install libraries and headers:
+On Ubuntu 21.10 or Raspberry Pi OS, one needs to run the following command to install libraries and headers:
 
-    sudo apt install pkg-config libpcap0.8 libpcap0.8-dev libnl-3-200 libnl-3-dev libnl-genl-3-200 libnl-genl-3-dev gpsd libgps23 libgps-dev libsqlite3-dev libsqlite3-0 meson ninja-build
+    sudo apt install pkg-config libpcap0.8 libpcap0.8-dev libnl-3-200 libnl-3-dev libnl-genl-3-200 libnl-genl-3-dev gpsd libgps28 libgps-dev libsqlite3-dev libsqlite3-0 meson ninja-build
 
 On archlinux-arm, this is (libnl is already installed):
 
@@ -60,14 +60,8 @@ To build the executable, you need *meson* and *ninja*.
     $ meson build
     $ ninja -C build
 
-If you don't want to or can't use meson+ninja, you can use a *Makefile* that is present in the git history.
-You can view it with:
-
-    $ git show a2fee3cbd3ae6f9cde291c419b5db6136f0c4c1f:Makefile
-
-You can output that command to a file with a redirection to get a Makefile. The file might be a little old and you might need to update it.
-
 ## Helper scripts
 
-   - `sqlite3_to_csv.py` will allow to convert a sqlite3 `.db` file to a `.csv` one, if you change your mind afterwards and wants a csv file instead of a sqlite3 db.
-   - `convert.py` will allow you to get a GPS trace in *GPX* or *KML* format to visualize on a map your path, and the SSID encoutered. This will allow you to check your GPS device and see if it works OK.
+  - `sqlite3_to_csv.py` will allow to convert a sqlite3 `.db` file to a `.csv` one, if you change your mind afterwards and wants a csv file instead of a sqlite3 db.
+  - `convert.py` will allow you to get a GPS trace in *GPX* or *KML* format to visualize on a map your path, and the SSIDs encoutered. This will allow you to check your GPS device and see if it works OK.
+  - `upload_to_wiglenet.sh` helps you to upload the collected data to wigle.net via cli
