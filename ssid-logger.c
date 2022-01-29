@@ -253,7 +253,11 @@ void initialize_pcap(pcap_t **handle, const char *iface)
 
   // only capture beacon frames
   struct bpf_program bfp;
+  #if LIBPCAP_VERSION_1_10_0
+  char filter_exp[] = "subtype beacon";
+  #else
   char filter_exp[] = "type mgt subtype beacon";
+  #endif
 
   if (pcap_compile(*handle, &bfp, filter_exp, 1, PCAP_NETMASK_UNKNOWN) == -1) {
     fprintf(stderr, "Error: couldn't parse filter %s: %s\n",

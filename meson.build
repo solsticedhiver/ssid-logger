@@ -2,12 +2,6 @@ project('ssid-logger', 'c', version: '0.2.3')
 
 cc = meson.get_compiler('c')
 
-conf_data = configuration_data()
-conf_data.set('version', meson.project_version())
-configure_file(input : 'config.h.in',
-               output : 'config.h',
-               configuration : conf_data)
-
 src = ['ssid-logger.c', 'hopper_thread.c', 'parsers.c', 'queue.c', 'radiotap.c',
   'logger_thread.c', 'gps_thread.c', 'db.c', 'ap_info.c', 'lruc.c']
 pcap_dep = dependency('pcap', version: '>1.0')
@@ -30,9 +24,19 @@ if cc.has_header('sys/stat.h')
   add_project_arguments('-DHAS_SYS_STAT_H', language: 'c')
 endif
 
+# There is a bug with libpcap 1.10.0; see https://github.com/solsticedhiver/ssid-logger/issues/2. Using a work-around in that case
 if pcap_dep.version() == '1.10.0'
-  warning('There is a bug with libpcap 1.10.0. Please either use a 1.9.1 version and older or a 1.10.1 and above (see https://github.com/solsticedhiver/ssid-logger/issues/2)')
+  is_version_1_10_0 = 1
+else
+  is_version_1_10_0 = 0
 endif
+
+conf_data = configuration_data()
+conf_data.set('version', meson.project_version())
+conf_data.set('is_version_1_10_0', is_version_1_10_0)
+configure_file(input : 'config.h.in',
+               output : 'config.h',
+               configuration : conf_data)
 
 executable('ssid-logger', src,
   dependencies: [pcap_dep, pthread_dep, nl_dep, genl_dep, gps_dep, sqlite3_dep],

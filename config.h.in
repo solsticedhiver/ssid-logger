@@ -3,6 +3,7 @@
 
 #define NAME "ssid-logger"
 #define VERSION "@version@"
+#define LIBPCAP_VERSION_1_10_0 @is_version_1_10_0@
 
 #define SNAP_LEN 512
 #define MAX_QUEUE_SIZE 128
