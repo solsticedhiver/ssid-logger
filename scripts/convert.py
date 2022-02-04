@@ -229,9 +229,10 @@ def write_kml(places, filename):
             elif place.acc < 6:
                 confidence = '#highConfidence'
 
+            ssid = place.ssid.replace('&', '&amp;').replace('"', '&quot;').replace("'", '&apos;').replace('<', '&lt;').replace('>', '&gt;')
             placemark = f'''
             <Placemark>
-                <name>{place.ssid}</name>
+                <name>{ssid}</name>
                 <open>1</open>
                 <description>Network ID: {place.mac.upper()}
 Encryption: {encryption}
@@ -280,16 +281,17 @@ def write_gpx(places, filename):
         output_file.write('</trkseg>\n</trk>\n')
         # also add waypoint ?
         for place in places:
+            ssid = place.ssid.replace('&', '&amp;').replace('"', '&quot;').replace("'", '&apos;').replace('<', '&lt;').replace('>', '&gt;')
             wpt = f'''    <wpt lat="{place.lat}" lon="{place.lon}">
         <ele>{place.alt}</ele>
         <time>{place.firstseen.isoformat()}</time>
-        <cmt>Name: {place.ssid}
+        <cmt>Name: {ssid}
 Network ID: {place.mac.upper()}
 Encryption: {encryption}
 Signal: {place.rssi}
 Accuracy: {place.acc:2.2f}
 Type: {place.type}</cmt>
-        <desc>Name: {place.ssid}
+        <desc>Name: {ssid}
 Network ID: {place.mac.upper()}
 Encryption: {encryption}
 Signal: {place.rssi}
