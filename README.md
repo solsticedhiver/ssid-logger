@@ -47,11 +47,11 @@ You also need *gpsd* up and running.
 ### Examples
 On Ubuntu 21.10 or Raspberry Pi OS, one needs to run the following command to install libraries and headers:
 
-    sudo apt install pkg-config libpcap0.8 libpcap0.8-dev libnl-3-200 libnl-3-dev libnl-genl-3-200 libnl-genl-3-dev gpsd libgps28 libgps-dev libsqlite3-dev libsqlite3-0 meson ninja-build
+    $ sudo apt install pkg-config libpcap0.8 libpcap0.8-dev libnl-3-200 libnl-3-dev libnl-genl-3-200 libnl-genl-3-dev gpsd libgps28 libgps-dev libsqlite3-dev libsqlite3-0 meson ninja-build
 
 On archlinux-arm, this is (libnl is already installed):
 
-    sudo pacman -S libpcap gpsd sqlite3 meson ninja
+    $ sudo pacman -S libpcap gpsd sqlite3 meson ninja
 
 ## Building
 To build the executable, you need *meson* and *ninja*.
