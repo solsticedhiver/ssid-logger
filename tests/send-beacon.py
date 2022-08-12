@@ -88,6 +88,15 @@ WPA2_EAP_FT_EAP_CCMP_TKIP_PSK_FT_PSK_CCMP_TKIP = [
     b'\x00\x0f\xac\x02',
     b'\x00\x0f\xac\x04',
     b'\x00\x00']
+WPA_EAP_FT_CCMP_TKIP = [
+    b'\x01\x00',
+    b'\x00\x0f\xac\x04',
+    b'\x02\x00',
+    b'\x00\x0f\xac\x04',
+    b'\x00\x0f\xac\x02',
+    b'\x04\x00',
+    b'\x00\x0f\xac\x04',
+    b'\x00\x00']
 WPA2_PSK_SHA256_CCMP_TKIP = [
     b'\x01\x00',
     b'\x00\x0f\xac\x04',
