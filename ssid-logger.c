@@ -1,6 +1,6 @@
 /*
 ssid-logger is a simple software to log SSID you encounter in your vicinity
-Copyright © 2020 solsTiCe d'Hiver
+Copyright © 2020-2022 solsTiCe d'Hiver
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -127,7 +127,7 @@ void parse_args(int argc, char *argv[], bool *format_csv, char **file_name, char
       option_file_name = optarg;
       break;
     case 'V':
-      printf("%s %s / Copyright © 2020 solsTiCe d'Hiver\n"
+      printf("%s %s / Copyright © 2020-2022 solsTiCe d'Hiver\n"
         "This program comes with ABSOLUTELY NO WARRANTY;"
         " this is free software, and you are welcome to redistribute it"
         " under certain conditions; for details, see LICENSE.txt\n", NAME, VERSION);
