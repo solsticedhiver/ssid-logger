@@ -4,16 +4,13 @@ Copyright © 2020 solsTiCe d'Hiver
 */
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
 #include <math.h>
 
 #include <libwifi.h>
-#include <assert.h>
 
-#include "radiotap_iter.h"
 #include "parsers.h"
 #include "gps_thread.h"
 
@@ -96,68 +93,8 @@ char *str_replace(const char *orig, const char *rep, const char *with)
     return result;
 }
 
-// parse radiotap header to get frequency and rssi
-// returns radiotap header size or -1 on error
-int8_t parse_radiotap_header(const uint8_t *packet, uint16_t *freq, int8_t *rssi)
-{
-  struct ieee80211_radiotap_header *rtaphdr;
-  rtaphdr = (struct ieee80211_radiotap_header *) (packet);
-  int8_t offset = (int8_t) rtaphdr->it_len;
-
-  struct ieee80211_radiotap_iterator iter;
-  uint16_t tf = 0;
-  //uint16_t flags = 0;
-  int8_t r, tr = 0;
-
-  static const struct radiotap_align_size align_size_000000_00[] = {
-    [0] = {.align = 1,.size = 4, },
-    [52] = {.align = 1,.size = 4, },
-  };
-
-  static const struct ieee80211_radiotap_namespace vns_array[] = {
-    {
-     .oui = 0x000000,
-     .subns = 0,
-     .n_bits = sizeof(align_size_000000_00),
-     .align_size = align_size_000000_00,
-      },
-  };
-
-  static const struct ieee80211_radiotap_vendor_namespaces vns = {
-    .ns = vns_array,
-    .n_ns = sizeof(vns_array) / sizeof(vns_array[0]),
-  };
-
-  int err = ieee80211_radiotap_iterator_init(&iter, rtaphdr, rtaphdr->it_len, &vns);
-  if (err) {
-    printf("Error: malformed radiotap header (init returned %d)\n", err);
-    *freq = tf;
-    *rssi = tr;
-    return -1;
-  }
-
-  // iterate through radiotap fields and look for frequency and rssi
-  while (!(err = ieee80211_radiotap_iterator_next(&iter))) {
-    if (iter.this_arg_index == IEEE80211_RADIOTAP_CHANNEL) {
-      assert(iter.this_arg_size == 4);  // XXX: why ?
-      tf = iter.this_arg[0] + (iter.this_arg[1] << 8);
-      //flags = iter.this_arg[2] + (iter.this_arg[3] << 8);
-    }
-    if (iter.this_arg_index == IEEE80211_RADIOTAP_DBM_ANTSIGNAL) {
-      r = (int8_t) * iter.this_arg;
-      if (r != 0)
-        tr = r;              // XXX: why do we get multiple dBm_antSignal with 0 value after the first one ?
-    }
-    if (tf != 0 && tr != 0)
-      break;
-  }
-  *freq = tf;
-  *rssi = tr;
-  return offset;
-}
-
 // parse the beacon frame to look for BSSID and Information Element we need (ssid, crypto, wps)
-struct libwifi_bss *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len, int8_t offset)
+struct libwifi_bss *parse_beacon_frame(const uint8_t *packet, uint32_t packet_len)
 {
   unsigned long data_len = packet_len;
   unsigned char *data = (unsigned char *) packet;

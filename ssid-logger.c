@@ -80,16 +80,11 @@ void sigint_handler(int s)
 // produces bss and store them in the queue
 void process_packet(uint8_t * args, const struct pcap_pkthdr *header, const uint8_t *packet)
 {
-  uint16_t freq;
-  int8_t rssi;
-  // parse radiotap header
-  int8_t offset = parse_radiotap_header(packet, &freq, &rssi);
-  if (offset < 0) {
-    return;
-  }
+  struct libwifi_radiotap_info rtap_info;
+  libwifi_parse_radiotap_info(&rtap_info, packet, header->caplen);
 
-  struct libwifi_bss *bss = parse_beacon_frame(packet, header->caplen, offset);
-  bss->signal = rssi;
+  struct libwifi_bss *bss = parse_beacon_frame(packet, header->caplen);
+  bss->signal = rtap_info.signal;
 
   sem_wait(&queue_full);
   pthread_mutex_lock(&mutex_queue);

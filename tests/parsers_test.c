@@ -77,12 +77,11 @@ static void test_parse_beacon_frame_from_pcap(void **state)
   gloc.lat=0.0; gloc.lon=0.0; gloc.alt=0.0; gloc.acc=0.0; gloc.ftime.tv_sec=0;
 
   while ((ret = pcap_next_ex(handle, &header, &pkt) != PCAP_ERROR_BREAK)) {
-    uint16_t freq;
-    int8_t rssi;
+    struct libwifi_radiotap_info rtap_info;
+    libwifi_parse_radiotap_info(&rtap_info, pkt, header->caplen);
 
-    int8_t offset = parse_radiotap_header(pkt, &freq, &rssi);
-    struct libwifi_bss *bss = parse_beacon_frame(pkt, header->len, offset);
-    bss->signal = rssi;
+    struct libwifi_bss *bss = parse_beacon_frame(pkt, header->caplen);
+    bss->signal = rtap_info.signal;
     char *tmp = bss_to_str(*bss, gloc);
     //printf("%s\n", tmp);fflush(stdout);
     assert_string_equal(tmp, beacons[count]);
