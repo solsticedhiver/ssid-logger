@@ -196,6 +196,7 @@ static void test_authmode_from_crypto(void **state)
   authmode = authmode_from_crypto(bss);
   assert_string_equal(authmode, "[WPA-PSK-TKIP+CCMP][WPA2-PSK/PSK+FT-CCMP][WPS][ESS]");
   free(authmode);
+
   // TODO: test with 4 akm suites
   //1,2,3,4 => WPA2-EAP/PSK+FT/EAP+FT/PSK-CCMP+TKIP
   //1,3,4,2 => WPA2-EAP/EAP+FT/PSK+FT/PSK-CCMP+TKIP

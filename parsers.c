@@ -119,35 +119,42 @@ struct libwifi_bss *parse_beacon_frame(const uint8_t *packet, uint32_t packet_le
   return NULL;
 }
 
-
 char *get_wpa_from_bss(struct libwifi_bss bss)
 {
   char *sec_buf = malloc(LIBWIFI_SECURITY_BUF_LEN*sizeof(char));
   sec_buf[0] = '\0';
+  int length = LIBWIFI_SECURITY_BUF_LEN - 1; // used to avoid overflow
+
   if (bss.wpa_info.wpa_version == 0) {
     return sec_buf;
   }
 
-  strcat(sec_buf, "[WPA-");
+  strncat(sec_buf, "[WPA-", length);
+  length -= 5;
 
   for (int i = 0; i < bss.wpa_info.num_auth_key_mgmt_suites; ++i) {
       if (i != 0) {
-        strcat(sec_buf, "/");
+        strncat(sec_buf, "/", length);
+        length -= 1;
       }
       switch (bss.wpa_info.auth_key_mgmt_suites[i].suite_type) {
           case AKM_SUITE_RESERVED:
               break;
           case AKM_SUITE_1X:
-              strcat(sec_buf, "EAP");
+              strncat(sec_buf, "EAP", length);
+              length -= 3;
               break;
           case AKM_SUITE_PSK:
-              strcat(sec_buf, "PSK");
+              strncat(sec_buf, "PSK",length);
+              length -= 3;
               break;
           case AKM_SUITE_1X_FT:
-              strcat(sec_buf, "EAP+FT");
+              strncat(sec_buf, "EAP+FT", length);
+              length -= 6;
               break;
           case AKM_SUITE_PSK_FT:
-              strcat(sec_buf, "PSK+FT");
+              strncat(sec_buf, "PSK+FT", length);
+              length -= 6;
               break;
       }
   }
@@ -174,33 +181,41 @@ char *get_wpa_from_bss(struct libwifi_bss bss)
 
   for (int i = 0; i < bss.wpa_info.num_unicast_cipher_suites; ++i) {
       if (i == 0) {
-        strcat(sec_buf, "-");
+        strncat(sec_buf, "-", length);
+        length -= 1;
       } else {
-        strcat(sec_buf, "+");
+        strncat(sec_buf, "+", length);
+        length -= 1;
       }
       switch (bss.wpa_info.unicast_cipher_suites[i].suite_type) {
           case CIPHER_SUITE_GROUP:
-              strcat(sec_buf, "GROUP");
+              strncat(sec_buf, "GROUP", length);
+              length -= 5;
               break;
           case CIPHER_SUITE_TKIP:
-              strcat(sec_buf, "TKIP");
+              strncat(sec_buf, "TKIP", length);
+              length -= 4;
               break;
           case CIPHER_SUITE_RESERVED:
               break;
           case CIPHER_SUITE_WEP40:
-              strcat(sec_buf, "WEP40");
+              strncat(sec_buf, "WEP40", length);
+              length -= 5;
               break;
           case CIPHER_SUITE_WEP104:
-              strcat(sec_buf, "WEP104");
+              strncat(sec_buf, "WEP104", length);
+              length -= 6;
               break;
           case CIPHER_SUITE_CCMP128:
-              strcat(sec_buf, "CCMP");
+              strncat(sec_buf, "CCMP", length);
+              length -= 4;
               break;
           default:
               break;
       }
   }
-  strcat(sec_buf, "]");
+  strncat(sec_buf, "]", length);
+  length -= 1;
 
   return sec_buf;
 }
@@ -209,22 +224,26 @@ char *get_rsn_from_bss(struct libwifi_bss bss)
 {
   char *sec_buf = malloc(LIBWIFI_SECURITY_BUF_LEN*sizeof(char));
   sec_buf[0] = '\0';
+  int s_length = LIBWIFI_SECURITY_BUF_LEN - 1; // used to avoid overflow
   if (bss.rsn_info.rsn_version == 0) {
     return sec_buf;
   }
 
   char *wpa2_buf = malloc(LIBWIFI_SECURITY_BUF_LEN*sizeof(char));
   wpa2_buf[0] = '\0';
+  int w2_length = LIBWIFI_SECURITY_BUF_LEN - 1; // used to avoid overflow
   bool wpa2_found = false;
 
   int found = 0;
   for (int i = 0; i < bss.rsn_info.num_auth_key_mgmt_suites; ++i) {
       if (memcmp(bss.rsn_info.auth_key_mgmt_suites[i].oui, CIPHER_SUITE_OUI, 3) == 0) {
           if (i == 0) {
-            strcat(wpa2_buf, "[WPA2-");
+            strncat(wpa2_buf, "[WPA2-", w2_length);
+            w2_length -= 6;
           }
           if (found > 0) {
-            strcat(wpa2_buf, "/");
+            strncat(wpa2_buf, "/", w2_length);
+            w2_length -=1;
             found = 0;
           }
           switch (bss.rsn_info.auth_key_mgmt_suites[i].suite_type) {
@@ -232,39 +251,48 @@ char *get_rsn_from_bss(struct libwifi_bss bss)
                   break;
               case AKM_SUITE_1X:
                   found++;
-                  strcat(wpa2_buf, "EAP");
+                  strncat(wpa2_buf, "EAP", w2_length);
+                  w2_length -= 3;
                   break;
               case AKM_SUITE_PSK:
                   found++;
-                  strcat(wpa2_buf, "PSK");
+                  strncat(wpa2_buf, "PSK", w2_length);
+                  w2_length -= 3;
                   break;
               case AKM_SUITE_1X_FT:
                   found++;
-                  strcat(wpa2_buf, "EAP+FT");
+                  strncat(wpa2_buf, "EAP+FT", w2_length);
+                  w2_length -= 6;
                   break;
               case AKM_SUITE_PSK_FT:
                   found++;
-                  strcat(wpa2_buf, "PSK+FT");
+                  strncat(wpa2_buf, "PSK+FT", w2_length);
+                  w2_length -= 6;
                   break;
               case AKM_SUITE_1X_SHA256:
                   found++;
-                  strcat(wpa2_buf, "EAP+SHA256");
+                  strncat(wpa2_buf, "EAP+SHA256", w2_length);
+                  w2_length -= 10;
                   break;
               case AKM_SUITE_PSK_SHA256:
                   found++;
-                  strcat(wpa2_buf, "PSK+SHA256");
+                  strncat(wpa2_buf, "PSK+SHA256", w2_length);
+                  w2_length -= 10;
                   break;
               case AKM_SUITE_TDLS:
                   found++;
-                  strcat(wpa2_buf, "TDLS");
+                  strncat(wpa2_buf, "TDLS", w2_length);
+                  w2_length -= 4;
                   break;
               case AKM_SUITE_FILS_SHA256:
                   found++;
-                  strcat(wpa2_buf, "FILS+SHA256");
+                  strncat(wpa2_buf, "FILS+SHA256", w2_length);
+                  w2_length -= 11;
                   break;
               case AKM_SUITE_FILS_SHA256_FT:
                   found++;
-                  strcat(wpa2_buf, "FILS+FT+SHA256");
+                  strncat(wpa2_buf, "FILS+FT+SHA256", w2_length);
+                  w2_length -= 14;
                   break;
           }
           wpa2_found = wpa2_found | (found > 0);
@@ -275,62 +303,76 @@ char *get_rsn_from_bss(struct libwifi_bss bss)
   }
   char *wpa3_buf = malloc(LIBWIFI_SECURITY_BUF_LEN*sizeof(char));
   wpa3_buf[0] = '\0';
+  int w3_length = LIBWIFI_SECURITY_BUF_LEN - 1; // used to avoid overflow
   bool wpa3_found = false;
 
   found = 0;
   for (int i = 0; i < bss.rsn_info.num_auth_key_mgmt_suites; ++i) {
       if (memcmp(bss.rsn_info.auth_key_mgmt_suites[i].oui, CIPHER_SUITE_OUI, 3) == 0) {
           if (i == 0) {
-            strcat(wpa3_buf, "[WPA3-");
+            strncat(wpa3_buf, "[WPA3-", w3_length);
+            w3_length -= 6;
           }
           if (found > 0) {
-            strcat(wpa3_buf, "/");
+            strncat(wpa3_buf, "/", w3_length);
+            w3_length -= 1;
             found = 0;
           }
           switch (bss.rsn_info.auth_key_mgmt_suites[i].suite_type) {
               case AKM_SUITE_SAE:
                   found++;
-                  strcat(wpa3_buf, "SAE");
+                  strncat(wpa3_buf, "SAE", w3_length);
+                  w3_length -= 3;
                   break;
               case AKM_SUITE_SAE_FT:
                   found++;
-                  strcat(wpa3_buf, "SAE+FT");
+                  strncat(wpa3_buf, "SAE+FT", w3_length);
+                  w3_length -= 6;
                   break;
               case AKM_SUITE_AP_PEER:
                   found++;
-                  strcat(wpa3_buf, "AP-PEER");
+                  strncat(wpa3_buf, "AP-PEER", w3_length);
+                  w3_length -= 7;
                   break;
               case AKM_SUITE_1X_SUITEB_SHA256:
                   found++;
-                  strcat(wpa3_buf, "EAP+SHA256");
+                  strncat(wpa3_buf, "EAP+SHA256", w3_length);
+                  w3_length -= 10;
                   break;
               case AKM_SUITE_1X_SUITEB_SHA384:
                   found++;
-                  strcat(wpa3_buf, "EAP+SHA384");
+                  strncat(wpa3_buf, "EAP+SHA384", w3_length);
+                  w3_length -= 10;
                   break;
               case AKM_SUITE_1X_FT_SHA384:
                   found++;
-                  strcat(wpa3_buf, "EAP+FT+SHA384");
+                  strncat(wpa3_buf, "EAP+FT+SHA384", w3_length);
+                  w3_length -= 13;
                   break;
               case AKM_SUITE_FILS_SHA384:
                   found++;
-                  strcat(wpa3_buf, "FILS+SHA384");
+                  strncat(wpa3_buf, "FILS+SHA384", w3_length);
+                  w3_length -= 11;
                   break;
               case AKM_SUITE_FILS_SHA384_FT:
                   found++;
-                  strcat(wpa3_buf, "FILS+FT-SHA384");
+                  strncat(wpa3_buf, "FILS+FT+SHA384", w3_length);
+                  w3_length -= 14;
                   break;
               case AKM_SUITE_OWE:
                   found++;
-                  strcat(wpa3_buf, "OWE");
+                  strncat(wpa3_buf, "OWE", w3_length);
+                  w3_length -= 3;
                   break;
               case AKM_PSK_SHA384_FT:
                   found++;
-                  strcat(wpa3_buf, "PSK+FT+SHA384");
+                  strncat(wpa3_buf, "PSK+FT+SHA384", w3_length);
+                  w3_length -= 13;
                   break;
               case AKM_PSK_SHA384:
                   found++;
-                  strcat(wpa3_buf, "PSK+SHA384");
+                  strncat(wpa3_buf, "PSK+SHA384", w3_length);
+                  w3_length -= 10;
                   break;
               default:
                   break;
@@ -376,47 +418,61 @@ char *get_rsn_from_bss(struct libwifi_bss bss)
 
   char *tmp_buf = malloc(LIBWIFI_SECURITY_BUF_LEN);
   tmp_buf[0] = '\0';
+  int length = LIBWIFI_SECURITY_BUF_LEN - 1; // used to avoid overflow
+
   for (int i = 0; i < bss.rsn_info.num_pairwise_cipher_suites; ++i) {
       if (i == 0) {
-        strcat(tmp_buf, "-");
+        strncat(tmp_buf, "-", length);
+        length -= 1;
       } else {
-        strcat(tmp_buf, "+");
+        strncat(tmp_buf, "+", length);
+        length -= 1;
       }
       if ((memcmp(bss.rsn_info.pairwise_cipher_suites[i].oui, CIPHER_SUITE_OUI, 3) == 0)) {
           switch (bss.rsn_info.pairwise_cipher_suites[i].suite_type) {
               case CIPHER_SUITE_GROUP:
-                  strcat(tmp_buf, "GROUP");
+                  strncat(tmp_buf, "GROUP", length);
+                  length -= 5;
                   break;
               case CIPHER_SUITE_TKIP:
-                  strcat(tmp_buf, "TKIP");
+                  strncat(tmp_buf, "TKIP", length);
+                  length -= 4;
                   break;
               case CIPHER_SUITE_RESERVED:
                   break;
               case CIPHER_SUITE_CCMP128:
-                  strcat(tmp_buf, "CCMP");
+                  strncat(tmp_buf, "CCMP", length);
+                  length -= 4;
                   break;
               case CIPHER_SUITE_BIP_CMAC128:
-                  strcat(tmp_buf, "BIP_CMAC128");
+                  strncat(tmp_buf, "BIP_CMAC128", length);
+                  length -= 11;
                   break;
               case CIPHER_SUITE_NOTALLOWED:
                   break;
               case CIPHER_SUITE_GCMP128:
-                  strcat(tmp_buf, "GCMP128");
+                  strncat(tmp_buf, "GCMP128", length);
+                  length -= 7;
                   break;
               case CIPHER_SUITE_GCMP256:
-                  strcat(tmp_buf, "GCMP256");
+                  strncat(tmp_buf, "GCMP256", length);
+                  length -= 7;
                   break;
               case CIPHER_SUITE_CCMP256:
-                  strcat(tmp_buf, "CCMP256");
+                  strncat(tmp_buf, "CCMP256", length);
+                  length -= 7;
                   break;
               case CIPHER_SUITE_BIP_GMAC128:
-                  strcat(tmp_buf, "BIP_GMAC128");
+                  strncat(tmp_buf, "BIP_GMAC128", length);
+                  length -= 11;
                   break;
               case CIPHER_SUITE_BIP_GMAC256:
-                  strcat(tmp_buf, "BIP_GMAC256");
+                  strncat(tmp_buf, "BIP_GMAC256", length);
+                  length -= 11;
                   break;
               case CIPHER_SUITE_BIP_CMAC256:
-                  strcat(tmp_buf, "BIP_CMAC256");
+                  strncat(tmp_buf, "BIP_CMAC256", length);
+                  length -= 11;
                   break;
               default:
                   break;
@@ -424,21 +480,27 @@ char *get_rsn_from_bss(struct libwifi_bss bss)
       }
   }
   if (wpa2_found) {
-    strcat(wpa2_buf, tmp_buf);
-    strcat(wpa2_buf, "]");
+    strncat(wpa2_buf, tmp_buf, w2_length);
+    w2_length -= strlen(tmp_buf);
+    strncat(wpa2_buf, "]", w2_length);
+    w2_length -= 1;
   } else {
     strcpy(wpa2_buf, "");
   }
   if (wpa3_found) {
-    strcat(wpa3_buf, tmp_buf);
-    strcat(wpa3_buf, "]");
+    strncat(wpa3_buf, tmp_buf, w3_length);
+    w3_length -= strlen(tmp_buf);
+    strncat(wpa3_buf, "]", w3_length);
+    w3_length -= 1;
   } else {
     strcpy(wpa3_buf, "");
   }
   free(tmp_buf);
 
-  strcat(sec_buf, wpa2_buf);
-  strcat(sec_buf, wpa3_buf);
+  strncat(sec_buf, wpa2_buf, s_length);
+  s_length -= strlen(wpa2_buf);
+  strncat(sec_buf, wpa3_buf, s_length);
+  s_length -= strlen(wpa3_buf);
   free(wpa2_buf);
   free(wpa3_buf);
 
