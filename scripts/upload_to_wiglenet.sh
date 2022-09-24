@@ -6,6 +6,7 @@ sql2csv="./sqlite3_to_csv.py"
 APIKEY="APIName:APIToken"
 
 usage() {
+	echo "Upload logged ssids to wigle.net"
 	echo "$0 [-h|--help] BEACON.DB|BEACON.CSV"
 }
 
