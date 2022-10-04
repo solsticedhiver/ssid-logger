@@ -8,7 +8,7 @@
 
 #include "config.h"
 
-extern unsigned int blink_led_pause;
+extern bool has_gps_got_fix;
 
 // echo a value in a file
 int echo_value(const char *path, int value)
@@ -39,11 +39,51 @@ void cleanup_led_state(void *arg)
   turn_led_off();
 }
 
+void blink_dot(void) {
+  turn_led_on();
+  usleep(DOT_LENGTH);
+  turn_led_off();
+  usleep(DOT_LENGTH);
+}
+
+void blink_dash(void) {
+  turn_led_on();
+  usleep(3*DOT_LENGTH);
+  turn_led_off();
+  usleep(DOT_LENGTH);
+}
+
+void letter_space(bool complete) {
+  // 3 dots length
+  usleep(2*DOT_LENGTH); // one has already been added at the end of last sign
+  if (complete) {
+    usleep(DOT_LENGTH);
+  }
+}
+void word_space(bool complete) {
+  // 7 dots length
+  usleep(6*DOT_LENGTH); // one has already been added at the end of last sign
+  if (complete) {
+    usleep(DOT_LENGTH);
+  }
+}
+
+void as_wait(void) {
+  // _AS_ prosign (WAIT)
+  blink_dot();
+  blink_dash();
+  blink_dot();
+  blink_dot();
+  blink_dot();
+}
+
 /*
- * will blink the led every LONG_PAUSE seconds until the gps fix is acquired
- * then will blink every SHORT_PAUSE seconds
- * by default, blink every 5 seconds, then every second
+ * will blink the led to signal gps fix or not
+ * if no gps fix, will blink dot, dash, dot, dot, dot (.-...) aka _AS_ (WAIT) prosign in morse code
+ * and then pause for 3 word spaces (by default, this is 5.25s)
  *
+ * if gpx fix, will blink a dot and pause for 2 word spaces (by default 3.5s)
+
  * for this to be visible and effective, one needs to use in /boot/config.txt
  * dtparam=act_led_trigger=none
  * dtparam=act_led_activelow=on
@@ -70,10 +110,16 @@ void *blink_forever(void *arg)
   pthread_cleanup_push(cleanup_led_state, NULL);
 
   while (true) {
-    turn_led_on();
-    usleep(FLASH_DURATION);
-    turn_led_off();
-    sleep(blink_led_pause);
+    if (!has_gps_got_fix) {
+      as_wait();
+      word_space(false);
+      word_space(true);
+      word_space(true);
+    } else {
+      blink_dot();
+      word_space(false);
+      word_space(true);
+    }
   }
 
   pthread_cleanup_pop(1);

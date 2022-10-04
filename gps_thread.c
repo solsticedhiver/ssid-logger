@@ -31,7 +31,6 @@ struct gps_loc gloc = {
 };
 
 bool has_gps_got_fix = false;
-unsigned int blink_led_pause = LONG_PAUSE;
 
 void cleanup_gps_data(void *arg)
 {
@@ -131,12 +130,11 @@ void *retrieve_gps_data(void *arg)
       // test everything is right
       if ((ret > 0) && gdt.set && ((gdt.fix.mode == MODE_2D) || (gdt.fix.mode == MODE_3D ))
           && isfinite(gdt.fix.latitude) && isfinite(gdt.fix.longitude)) {
-        if (!has_gps_got_fix) {
-          // update variable to change blink frequency if gps fix
-          has_gps_got_fix = true;
-          blink_led_pause = SHORT_PAUSE;
-        }
+          // update variable to change led blinking code
+        has_gps_got_fix = true;
         update_gloc(gdt);
+      } else {
+        has_gps_got_fix = false;
       }
       pthread_mutex_unlock(&mutex_gloc);
     }
