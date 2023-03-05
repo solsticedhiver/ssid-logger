@@ -12,7 +12,7 @@ gps_dep = dependency('libgps')
 sqlite3_dep = dependency('sqlite3')
 cmocka_dep = dependency('cmocka', required: false)
 
-libwifi_dep = cc.find_library('libwifi', required: false)
+libwifi_dep = cc.find_library('wifi', required: false)
 if not libwifi_dep.found()
   libwifi_proj = subproject('libwifi')
   libwifi_dep = libwifi_proj.get_variable('libwifi_dep')
