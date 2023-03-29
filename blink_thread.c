@@ -9,6 +9,7 @@
 #include "config.h"
 
 extern bool has_gps_got_fix;
+ const char *BRIGHTNESS = LED0_BRIGHTNESS;
 
 // echo a value in a file
 int echo_value(const char *path, int value)
@@ -88,12 +89,19 @@ void as_wait(void) {
  * dtparam=act_led_trigger=none
  * dtparam=act_led_activelow=on
  */
+
+
 void *blink_forever(void *arg)
 {
   if (access(BRIGHTNESS, F_OK) == -1) {
-    // abort because the file does not exist
     fprintf(stderr, "Error: %s does not exist\n", BRIGHTNESS);
-    return NULL;
+    // trying new new name for kernel 6.x
+    BRIGHTNESS = ACT_BRIGHTNESS;
+    if (access(BRIGHTNESS, F_OK) == -1) {
+      fprintf(stderr, "Error: %s does not exist\n", BRIGHTNESS);
+      // abort because the file does not exist
+      return NULL;
+    }
   }
   if (access(BRIGHTNESS, W_OK) == -1) {
     // abort because the file is not writable

@@ -19,7 +19,8 @@
 #define AUTHMODE_CACHE_SIZE 32
 #define AP_CACHE_SIZE 64
 
-#define BRIGHTNESS "/sys/class/leds/led0/brightness"
+#define LED0_BRIGHTNESS "/sys/class/leds/led0/brightness"
+#define ACT_BRIGHTNESS "/sys/class/leds/ACT/brightness"
 #define DOT_LENGTH 250000 // in microseconds
 
 #endif
