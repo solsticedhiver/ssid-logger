@@ -9,7 +9,7 @@
 #include "config.h"
 
 extern bool has_gps_got_fix;
- const char *BRIGHTNESS = LED0_BRIGHTNESS;
+char *BRIGHTNESS = LED0_BRIGHTNESS;
 
 // echo a value in a file
 int echo_value(const char *path, int value)
