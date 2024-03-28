@@ -1,8 +1,8 @@
 [wrap-file]
-directory = libwifi-0.0.8
+directory = libwifi-0.0.10
 
-source_url = https://github.com/libwifi/libwifi/archive/refs/tags/0.0.8.tar.gz
-source_filename = libwifi-0.0.8.tar.gz
-source_hash = f3eb9a0a63fa9f5253ff75c40563a9378f51bf04786161f79cce67f312dcb70c
+source_url = https://github.com/libwifi/libwifi/archive/refs/tags/0.0.10.tar.gz
+source_filename = libwifi-0.0.10.tar.gz
+source_hash = 894a8ab711c0abdabd78cc55343757d35ddf4399e5243a9ed0a3a52659eb8f71
 
 patch_directory = libwifi

@@ -1,4 +1,4 @@
-project('libwifi', 'c', version: '0.0.8', license: 'Apache-2.0')
+project('libwifi', 'c', version: '0.0.10', license: 'Apache-2.0')
 version = meson.project_version()
 gitbranch = run_command('git', 'rev-parse', '--abbrev-ref', 'HEAD', check: false)
 if gitbranch.returncode() == 0
