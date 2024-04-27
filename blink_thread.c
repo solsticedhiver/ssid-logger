@@ -96,6 +96,7 @@ void *blink_forever(void *arg)
   if (access(BRIGHTNESS, F_OK) == -1) {
     fprintf(stderr, "Error: %s does not exist\n", BRIGHTNESS);
     // trying new new name for kernel 6.x
+    printf("Trying to use %s instead\n", ACT_BRIGHTNESS);
     BRIGHTNESS = ACT_BRIGHTNESS;
     if (access(BRIGHTNESS, F_OK) == -1) {
       fprintf(stderr, "Error: %s does not exist\n", BRIGHTNESS);
