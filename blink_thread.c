@@ -94,9 +94,8 @@ void as_wait(void) {
 void *blink_forever(void *arg)
 {
   if (access(BRIGHTNESS, F_OK) == -1) {
-    fprintf(stderr, "Error: %s does not exist\n", BRIGHTNESS);
+    fprintf(stderr, "Error: %s does not exist; trying to use %s instead\n", BRIGHTNESS, ACT_BRIGHTNESS);
     // trying new new name for kernel 6.x
-    printf("Trying to use %s instead\n", ACT_BRIGHTNESS);
     BRIGHTNESS = ACT_BRIGHTNESS;
     if (access(BRIGHTNESS, F_OK) == -1) {
       fprintf(stderr, "Error: %s does not exist\n", BRIGHTNESS);
