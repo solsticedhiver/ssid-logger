@@ -91,15 +91,11 @@ void *process_queue(void *args)
       log = true;
     } else {
       if (!tmp_gloc.updated) {
-        clock_gettime(CLOCK_MONOTONIC, &now);
-        // if gps data is older than MAX_GPS_DATA_AGE seconds (default is 2), don't use them
-        if (now.tv_sec - tmp_gloc.ctime.tv_sec > MAX_GPS_DATA_AGE) {
-          if (option_gps == GPS_LOG_ONZ) {
-            log = false;
-          } else {
-            tmp_gloc.lat = tmp_gloc.lon = tmp_gloc.alt = tmp_gloc.acc = 0.0;
-            log = true;
-          }
+        if (option_gps == GPS_LOG_ONZ) {
+          log = false;
+        } else {
+          tmp_gloc.lat = tmp_gloc.lon = tmp_gloc.alt = tmp_gloc.acc = 0.0;
+          log = true;
         }
       } else {
         log = true;

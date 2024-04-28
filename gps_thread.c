@@ -6,7 +6,6 @@ Copyright © 2020-2022 solsTiCe d'Hiver
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <unistd.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <pthread.h>
@@ -30,7 +29,9 @@ struct gps_loc gloc = {
   .ctime = { .tv_sec=0, .tv_nsec=0 }
 };
 
+#ifdef BLINK_LED
 bool has_gps_got_fix = false;
+#endif
 
 void cleanup_gps_data(void *arg)
 {
@@ -52,7 +53,10 @@ static inline int update_gloc(struct gps_data_t gdt)
   gloc.lon = gdt.fix.longitude;
   #if GPSD_API_MAJOR_VERSION >= 9
     gloc.alt = isfinite(gdt.fix.altMSL) ? gdt.fix.altMSL : 0.0;
-    gloc.ftime = gdt.fix.time;
+    if (TIME_SET == (TIME_SET & gdt.set)) {
+      // not 32 bit safe
+      gloc.ftime = gdt.fix.time;
+    }
     if (isfinite(gdt.fix.eph)) {
       gloc.acc = gdt.fix.eph;
     } else {
@@ -60,7 +64,9 @@ static inline int update_gloc(struct gps_data_t gdt)
     }
   #else
     gloc.alt = isfinite(gdt.fix.altitude) ? gdt.fix.altitude : 0.0;
-    gloc.ftime.tv_sec = (time_t)gdt.fix.time;
+    if (TIME_SET == (TIME_SET & gdt.set)) {
+      gloc.ftime.tv_sec = (time_t)gdt.fix.time;
+    }
     if (isfinite(gdt.fix.epx) && isfinite(gdt.fix.epy)) {
       gloc.acc = sqrt(2*pow(gdt.fix.epx, 2) + 2*pow(gdt.fix.epy, 2));
     } else {
@@ -80,6 +86,7 @@ void *retrieve_gps_data(void *arg)
 {
   struct gps_data_t gdt;
   option_gps_t *option_gps;
+  struct timespec now;
 
   #ifdef HAS_SYS_PRCTL_H
   // name our thread; using prctl instead of pthread_setname_np to avoid defining _GNU_SOURCE
@@ -96,7 +103,7 @@ void *retrieve_gps_data(void *arg)
     return NULL;
   }
 
-  if (gps_open(GPSD_HOST, GPSD_PORT, &gdt) == -1) {
+  if (gps_open(GPSD_HOST, GPSD_PORT, &gdt) != 0) {
     // error connecting to gpsd
     fprintf(stderr, "Error(gpsd): %s\n", gps_errstr(errno));
     pthread_mutex_lock(&mutex_gtr);
@@ -118,27 +125,41 @@ void *retrieve_gps_data(void *arg)
   int ret;
 
   while (true) {
-    // wait at most for 1 second to receive data
-    if (gps_waiting(&gdt, 1000000)) {
+    // wait at most for 5 seconds to receive data
+    if (gps_waiting(&gdt, 5000000)) {
       #if GPSD_API_MAJOR_VERSION >= 7
         ret = gps_read(&gdt, NULL, 0);
       #else
         ret = gps_read(&gdt);
       #endif
-      pthread_mutex_lock(&mutex_gloc);
-      gloc.updated = false;
       // test everything is right
-      if ((ret > 0) && gdt.set && ((gdt.fix.mode == MODE_2D) || (gdt.fix.mode == MODE_3D ))
-          && isfinite(gdt.fix.latitude) && isfinite(gdt.fix.longitude)) {
-          // update variable to change led blinking code
+      if ((ret == -1) || (MODE_SET != (MODE_SET & gdt.set))) {
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        // if gps data is older than MAX_GPS_DATA_AGE seconds (default is 2), don't use them
+        if ((gloc.updated == true) && (now.tv_sec - gloc.ctime.tv_sec > MAX_GPS_DATA_AGE)) {
+          pthread_mutex_lock(&mutex_gloc);
+          gloc.updated = false;
+          pthread_mutex_unlock(&mutex_gloc);
+        }
+        continue;
+      }
+
+      if (((gdt.fix.mode == MODE_2D) || (gdt.fix.mode == MODE_3D))
+        && isfinite(gdt.fix.latitude) && isfinite(gdt.fix.longitude)) {
+        // update variable to change led blinking code
+        #ifdef BLINK_LED
         has_gps_got_fix = true;
+        #endif
+        pthread_mutex_lock(&mutex_gloc);
         update_gloc(gdt);
-      } else {
+        pthread_mutex_unlock(&mutex_gloc);
+      }
+      #ifdef BLINK_LED
+      else {
         has_gps_got_fix = false;
       }
-      pthread_mutex_unlock(&mutex_gloc);
+      #endif
     }
-    usleep(500000);
     pthread_testcancel();
   }
 
