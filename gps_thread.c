@@ -133,16 +133,20 @@ void *retrieve_gps_data(void *arg)
         ret = gps_read(&gdt);
       #endif
       // test everything is right
-      if ((ret == -1) || (MODE_SET != (MODE_SET & gdt.set))) {
+        if ((ret == -1) || (MODE_SET != (MODE_SET & gdt.set))) {
+          pthread_mutex_lock(&mutex_gloc);
+          gloc.updated = false;
+          pthread_mutex_unlock(&mutex_gloc);
+          continue;
+        }
         clock_gettime(CLOCK_MONOTONIC, &now);
         // if gps data is older than MAX_GPS_DATA_AGE seconds (default is 2), don't use them
         if ((gloc.updated == true) && (now.tv_sec - gloc.ctime.tv_sec > MAX_GPS_DATA_AGE)) {
           pthread_mutex_lock(&mutex_gloc);
           gloc.updated = false;
           pthread_mutex_unlock(&mutex_gloc);
+          continue;
         }
-        continue;
-      }
 
       if (((gdt.fix.mode == MODE_2D) || (gdt.fix.mode == MODE_3D))
         && isfinite(gdt.fix.latitude) && isfinite(gdt.fix.longitude)) {
