@@ -58,8 +58,8 @@ On archlinux-arm, this is (libnl is already installed):
 To build the executable, you need *meson* and *ninja*.
 
     $ cd ssid-logger
-    $ meson build
-    $ ninja -C build
+    $ meson setup build
+    $ meson compile -C build
 
 ## Helper scripts
 
