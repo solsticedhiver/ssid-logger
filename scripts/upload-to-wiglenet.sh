@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sql2csv="./sqlite3_to_csv.py"
+sql2csv="./sqlite3-to-csv.py"
 
 # look on https://wigle.net/account for your API Name and API Token
 APIKEY="APIName:APIToken"

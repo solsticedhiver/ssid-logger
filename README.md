@@ -63,7 +63,7 @@ To build the executable, you need *meson* and *ninja*.
 
 ## Helper scripts
 
-  - `sqlite3_to_csv.py` will allow to convert a sqlite3 `.db` file to a `.csv` one, if you change your mind afterwards and wants a csv file instead of a sqlite3 db.
+  - `sqlite3-to-csv.py` will allow to convert a sqlite3 `.db` file to a `.csv` one, if you change your mind afterwards and wants a csv file instead of a sqlite3 db.
   - `convert.py` will allow you to get a GPS trace in *GPX* or *KML* format to visualize on a map your path, and the SSIDs encoutered. This will allow you to check your GPS device and see if it works OK.
-  - `upload_to_wiglenet.sh` helps you to upload the collected data to wigle.net via cli
+  - `upload-to-wiglenet.sh` helps you to upload the collected data to wigle.net via cli
   - `transactions.sh` allows you to see your latest transactions/uploads on wigle.net
