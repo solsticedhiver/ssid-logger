@@ -3,16 +3,16 @@
 import sqlite3
 import csv
 import argparse
-from datetime import datetime
+from datetime import datetime, UTC
 import time
 import os.path
 import sys
 import shlex
 
-VERSION = '0.3.0'
-CSV_PRE_HEADER = 'WigleWifi-1.4,appRelease={},model={},release={},device=ssid-logger,display=ssid-logger,board=ssid-logger,brand=ssid-logger'
-CSV_HEADER = ['MAC', 'SSID', 'AuthMode', 'FirstSeen', 'Channel', 'RSSI',
-    'CurrentLatitude', 'CurrentLongitude', 'AltitudeMeters', 'AccuracyMeters', 'Type']
+VERSION = '0.3.1'
+CSV_PRE_HEADER = 'WigleWifi-1.6,appRelease={},model={},release={},device=ssid-logger,display=ssid-logger,board=ssid-logger,brand=ssid-logger,star=Sol,body=3,subBody=0'
+CSV_HEADER = ['MAC', 'SSID', 'AuthMode', 'FirstSeen', 'Channel', 'Frequency', 'RSSI',
+    'CurrentLatitude', 'CurrentLongitude', 'AltitudeMeters', 'AccuracyMeters', 'RCOIS', 'MfgrId', 'Type']
 
 # borrowed from distro.py module
 def _parse_os_release_content():
@@ -111,22 +111,30 @@ def main():
         csvwriter.writerow(CSV_HEADER)
         row = c.fetchone()  # TODO: try/catch this one too
         while row is not None:
-            tmp = list(row)
-            if tmp[1] is None:
+            tmp = ['']*13
+            if row[1] is None:
                 try:
                     row = c.fetchone()
                 except sqlite3.OperationalError as o:
                     pass
                 continue
-            if args.after and tmp[3] < start_time:
+            if args.after and row[3] < start_time:
                 continue
-            if args.before and tmp[3] > end_time:
+            if args.before and row[3] > end_time:
                 continue
-            tmp[3] = datetime.utcfromtimestamp(row[3])
-            tmp[6] = f'{row[6]:-2.6f}'
-            tmp[7] = f'{row[7]:-2.6f}'
-            tmp[8] = f'{row[8]:-2.6f}'
-            tmp[9] = f'{row[9]:-2.6f}'
+            tmp[0:3] = row[0:3]
+            tmp[3] = datetime.fromtimestamp(row[3], UTC).isoformat(' ', 'seconds').split('+')[0]
+            tmp[4] = row[4]
+            # we don't store frequency yet, so convert channel to frequency
+            if row[4] <= 14:
+                tmp[5] = 2412 + 5 * (row[4]-1)
+            tmp[6] = row[5]
+            tmp[7] = f'{row[6]:-2.6f}'
+            tmp[8] = f'{row[7]:-2.6f}'
+            tmp[9] = f'{row[8]:-2.6f}'
+            tmp[10] = f'{row[9]:-2.6f}'
+            tmp[11] = '' # RCOIs, unknown until we store it in db
+            tmp[12] = ''
             tmp.append('WIFI')
             csvwriter.writerow(tmp)
             try:

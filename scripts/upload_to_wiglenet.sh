@@ -39,7 +39,7 @@ if [ $# -ge 1 ] ;then
 			wf=$f
 		fi
 		# double check that the header is there
-		if head -n 1 $wf|grep -q 'WigleWifi-1.4,appRelease' ; then
+		if head -n 1 $wf|grep -q 'WigleWifi-1.6,appRelease' ; then
 			if grep -q WIFI $wf &>/dev/null; then
 				echo ":: Uploading... $wf"
 				upload "$wf"
