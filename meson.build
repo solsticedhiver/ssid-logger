@@ -1,4 +1,4 @@
-project('ssid-logger', 'c', version: '0.3.1')
+project('ssid-logger', 'c', version: '0.4.0')
 
 cc = meson.get_compiler('c')
 
