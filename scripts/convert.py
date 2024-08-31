@@ -117,14 +117,14 @@ GPX_HEADER = '''<?xml version="1.0" encoding="UTF-8"?>
 
 import sqlite3
 import argparse
-from datetime import datetime
+from datetime import datetime,UTC
 import os.path
 import sys
 import csv
 import io
 
 class Place:
-    def __init__(self, mac, ssid, authmode, firstseen, channel, rssi, lat, lon, alt, acc, ttype):
+    def __init__(self, mac, ssid, authmode, firstseen, channel, freq, rssi, lat, lon, alt, acc, rcois, mfgrid, ttype):
         self.mac = mac
         self.ssid = ssid
         self.authmode = authmode
@@ -250,7 +250,7 @@ Type: {place.type}</description>
         output_file.write(footer.lstrip('\n'))
 
 def write_gpx(places, filename):
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     minlat = 360.0
     minlon = 360.0
     maxlat= 0.0
