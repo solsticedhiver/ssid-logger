@@ -54,8 +54,8 @@ static inline int update_gloc(struct gps_data_t gdt)
   #if GPSD_API_MAJOR_VERSION >= 9
     gloc.alt = isfinite(gdt.fix.altMSL) ? gdt.fix.altMSL : 0.0;
     if (TIME_SET == (TIME_SET & gdt.set)) {
-      // not 32 bit safe
-      gloc.ftime = gdt.fix.time;
+      gloc.ftime.tv_sec = (time_t)gdt.fix.time.tv_sec;
+      gloc.ftime.tv_nsec = gdt.fix.time.tv_nsec;
     }
     if (isfinite(gdt.fix.eph)) {
       gloc.acc = gdt.fix.eph;
