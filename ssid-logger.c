@@ -84,6 +84,7 @@ void process_packet(uint8_t * args, const struct pcap_pkthdr *header, const uint
   libwifi_parse_radiotap_info(&rtap_info, packet, header->caplen);
 
   struct libwifi_bss *bss = parse_beacon_frame(packet, header->caplen);
+  if (bss == NULL) return;
   bss->signal = rtap_info.signal;
 
   sem_wait(&queue_full);

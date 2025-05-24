@@ -99,6 +99,10 @@ struct libwifi_bss *parse_beacon_frame(const uint8_t *packet, uint32_t packet_le
   unsigned long data_len = packet_len;
   unsigned char *data = (unsigned char *) packet;
 
+  if (data_len == 0) {
+    return NULL;
+  }
+
   // Initialise a libwifi_frame struct and populate it
   struct libwifi_frame frame = {0};
   int ret = libwifi_get_wifi_frame(&frame, data, data_len, 1 /* has_radiotap*/);
